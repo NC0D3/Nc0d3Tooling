@@ -1,0 +1,7 @@
+{
+  "id": "uuidv6",
+  "name": "UUID v6 Generator",
+  "description": "Genera identificadores únicos ordenados por tiempo (UUID versión 6), perfectos para optimizar índices en bases de datos.",
+  "image": "uuidv6.svg",
+  "url": "uuidv6.html"
+}

@@ -56,7 +56,6 @@ body {
   position: relative;
   flex: 1;
   max-width: 400px;
-  filter: url('#gooey'); /* Efecto gooey sutil en el buscador al interactuar */
 }
 
 #search-input {

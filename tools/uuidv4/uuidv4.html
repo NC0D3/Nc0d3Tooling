@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UUID v4 Generator - Nc0d3Tools</title>
+  <style>
+    :root {
+      --verde-botella: #07291e;
+      --verde-botella-light: #0d3b2c;
+      --verde-esmeralda: #10b981;
+      --verde-esmeralda-glow: #34d399;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+
+    body {
+      background-color: var(--verde-botella);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-header {
+      background: rgba(7, 41, 30, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 1.5rem; }
+
+    .back-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--verde-esmeralda); cursor: pointer; transition: all 0.3s ease; text-decoration: none;
+    }
+    .back-btn:hover { background: rgba(16, 185, 129, 0.1); transform: scale(1.05); }
+
+    .logo { font-size: 1.4rem; font-weight: 800; color: #ffffff; }
+    .logo span { color: var(--verde-esmeralda); }
+
+    .tool-container {
+      max-width: 1200px; margin: 2rem auto; padding: 0 2rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+      flex: 1; width: 100%; min-height: 500px;
+    }
+    @media (max-width: 768px) { .tool-container { grid-template-columns: 1fr; } }
+
+    /* Columna Izquierda: Controles */
+    .control-column { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .control-card {
+      background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 16px; padding: 2rem; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center; gap: 1.5rem; flex: 1;
+    }
+
+    .control-card h3 { font-size: 1.2rem; color: #fff; }
+    .control-card p { font-size: 0.9rem; color: var(--text-muted); }
+
+    .action-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.75rem 2rem; background-color: var(--verde-esmeralda); color: var(--verde-botella);
+      font-weight: 700; border-radius: 50px; border: none; cursor: pointer; transition: background 0.3s ease, transform 0.2s ease;
+    }
+    .action-btn:hover { background-color: var(--verde-esmeralda-glow); transform: scale(1.02); }
+    .action-btn svg { width: 18px; height: 18px; }
+
+    /* Columna Derecha: Output */
+    .output-column { display: flex; flex-direction: column; }
+
+    .output-section {
+      background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; flex: 1;
+    }
+
+    .output-header { display: flex; justify-content: space-between; align-items: center; }
+    .output-header h2 { font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 0.5rem; }
+    .header-icon { width: 20px; height: 20px; color: var(--verde-esmeralda); }
+
+    .copy-btn {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;
+      background: rgba(0,0,0,0.2); border: 1px solid var(--verde-esmeralda); color: var(--verde-esmeralda);
+      border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease;
+    }
+    .copy-btn:hover { background: var(--verde-esmeralda); color: var(--verde-botella); }
+    .copy-btn svg { width: 16px; height: 16px; }
+
+    textarea {
+      flex: 1; width: 100%; padding: 1.2rem; border-radius: 8px; border: 1px dashed rgba(16, 185, 129, 0.3);
+      background: rgba(0, 0, 0, 0.2); color: var(--verde-esmeralda-glow); font-family: monospace;
+      font-size: 1rem; resize: none; outline: none; line-height: 1.6;
+    }
+    textarea:focus { border-color: var(--verde-esmeralda); border-style: solid; }
+  </style>
+</head>
+<body>
+
+  <header class="main-header">
+    <div class="header-left">
+      <a href="../../index.html" class="back-btn" title="Volver al Hub">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <h1 class="logo">Nc0d3<span>Tools</span></h1>
+    </div>
+  </header>
+
+  <main class="tool-container">
+    <!-- COLUMNA IZQUIERDA -->
+    <div class="control-column">
+      <div class="control-card">
+        <h3>Generador UUID v4</h3>
+        <p>Haz clic en el botón para generar un nuevo identificador único aleatorio.</p>
+        <button class="action-btn" id="generate-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          Generar UUID
+        </button>
+      </div>
+    </div>
+
+    <!-- COLUMNA DERECHA -->
+    <div class="output-column">
+      <div class="output-section">
+        <div class="output-header">
+          <h2><svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Resultado</h2>
+          <button class="copy-btn" id="copy-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-linejoin="round"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="copy-text">Copiar</span>
+          </button>
+        </div>
+        <textarea id="result-box" placeholder="Tu UUID v4 aparecerá aquí..." readonly></textarea>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { generateUUIDv4 } from './uuidv4.js';
+
+    const resultBox = document.getElementById('result-box');
+    const generateBtn = document.getElementById('generate-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const copyText = document.getElementById('copy-text');
+
+    function createNewUuid() {
+      const uuid = generateUUIDv4();
+      resultBox.value = uuid;
+    }
+
+    // Generar uno automáticamente al cargar la página
+    createNewUuid();
+
+    generateBtn.addEventListener('click', createNewUuid);
+
+    copyBtn.addEventListener('click', () => {
+      const val = resultBox.value;
+      if (!val) return;
+
+      navigator.clipboard.writeText(val).then(() => {
+        copyText.textContent = '¡Copiado!';
+        copyBtn.style.background = 'var(--verde-esmeralda)';
+        copyBtn.style.color = 'var(--verde-botella)';
+        
+        setTimeout(() => {
+          copyText.textContent = 'Copiar';
+          copyBtn.style.background = 'rgba(0,0,0,0.2)';
+          copyBtn.style.color = 'var(--verde-esmeralda)';
+        }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

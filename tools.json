@@ -1,3 +1,5 @@
 [
-  "img2uri"
+  "img2uri",
+  "uuidv4",
+  "uuidv6"
 ]

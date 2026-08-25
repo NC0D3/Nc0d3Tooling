@@ -1,0 +1,7 @@
+{
+  "id": "uuidv4",
+  "name": "UUID v4 Generator",
+  "description": "Genera identificadores únicos aleatorios (UUID versión 4) seguros y estáticos para tus bases de datos o proyectos.",
+  "image": "uuidv4.svg",
+  "url": "uuidv4.html"
+}

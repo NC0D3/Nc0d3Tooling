@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="100%" height="100%">
+  <!-- Fondo botella profundo -->
+  <rect width="300" height="150" fill="#07291e" />
+  
+  <!-- Patrón de celdas tipo grid (como img2uri) -->
+  <pattern id="gridV4" width="20" height="20" patternUnits="userSpaceOnUse">
+    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#10b981" stroke-width="0.5" stroke-opacity="0.15" />
+  </pattern>
+  <rect width="300" height="150" fill="url(#gridV4)" />
+
+  <!-- Bloque izquierdo: Identificador de Versión con marco geométrico -->
+  <g transform="translate(25, 25)">
+    <rect width="80" height="100" rx="10" fill="none" stroke="#10b981" stroke-width="2" stroke-opacity="0.6" />
+    <circle cx="20" cy="20" r="6" fill="#10b981" opacity="0.8" />
+    <!-- Texto V4 grande -->
+    <text x="18" y="75" font-family="system-ui, sans-serif" font-weight="900" font-size="46" fill="#34d399">v4</text>
+  </g>
+
+  <!-- Polvo de datos / Bits dispersos (estilo img2uri) -->
+  <g fill="#34d399">
+    <rect x="125" y="45" width="4" height="4" opacity="0.9" />
+    <rect x="145" y="35" width="4" height="4" opacity="0.5" />
+    <rect x="135" y="85" width="4" height="4" opacity="0.8" />
+    <rect x="165" y="65" width="4" height="4" opacity="0.4" />
+    <rect x="195" y="40" width="4" height="4" opacity="0.7" />
+    <rect x="185" y="90" width="4" height="4" opacity="0.6" />
+    <rect x="225" y="55" width="4" height="4" opacity="0.3" />
+  </g>
+
+  <!-- Bloques simulados de UUID a la derecha conectados por guiones -->
+  <g transform="translate(130, 60)" font-family="monospace" font-size="12" fill="#34d399">
+    <!-- Cápsulas de datos -->
+    <rect x="0" y="0" width="34" height="20" rx="4" fill="#0d3b2c" stroke="#10b981" stroke-width="1.5" />
+    <text x="8" y="14" font-size="10" fill="#e2e8f0">a2f8</text>
+    
+    <line x1="38" y1="10" x2="46" y2="10" stroke="#34d399" stroke-width="2" />
+
+    <rect x="50" y="0" width="28" height="20" rx="4" fill="#10b981" />
+    <text x="58" y="14" font-size="10" font-weight="bold" fill="#07291e">4b</text>
+
+    <line x1="82" y1="10" x2="90" y2="10" stroke="#34d399" stroke-width="2" />
+
+    <rect x="94" y="0" width="34" height="20" rx="4" fill="#0d3b2c" stroke="#34d399" stroke-width="1.5" />
+    <text x="102" y="14" font-size="10" fill="#e2e8f0">c91e</text>
+  </g>
+
+  <!-- Línea inferior de cierre -->
+  <path d="M 0 148 L 300 148" stroke="#10b981" stroke-width="4" opacity="0.3" />
+</svg>
