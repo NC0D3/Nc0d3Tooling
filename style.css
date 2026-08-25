@@ -1,0 +1,190 @@
+:root {
+  --verde-botella: #07291e;
+  --verde-botella-light: #0d3b2c;
+  --verde-esmeralda: #10b981;
+  --verde-esmeralda-glow: #34d399;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --card-bg: rgba(13, 59, 44, 0.65);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background-color: var(--verde-botella);
+  color: var(--text-main);
+  min-height: 100vh;
+}
+
+/* Header & Buscador */
+.main-header {
+  background: rgba(7, 41, 30, 0.9);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 1rem 2rem;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.logo span {
+  color: var(--verde-esmeralda);
+}
+
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 480px;
+}
+
+#search-input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: var(--verde-botella-light);
+  color: var(--text-main);
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+#search-input:focus {
+  border-color: var(--verde-esmeralda);
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+/* Grilla de Herramientas */
+.container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Card con Efecto Gooey en Hover */
+.tool-card {
+  position: relative;
+  background: var(--card-bg);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tool-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--verde-esmeralda);
+}
+
+/* Efecto Gooey Dinámico */
+.gooey-wrapper {
+  position: relative;
+  filter: url('#gooey-effect');
+}
+
+.gooey-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  background-color: var(--verde-esmeralda);
+  color: var(--verde-botella);
+  font-weight: 700;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.tool-card:hover .gooey-btn {
+  background-color: var(--verde-esmeralda-glow);
+  box-shadow: 0 0 12px var(--verde-esmeralda-glow);
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tool-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--verde-botella);
+  padding: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.tool-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.tool-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.tool-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.tags {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--verde-esmeralda);
+  border-radius: 12px;
+}
