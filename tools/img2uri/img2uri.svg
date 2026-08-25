@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente de fondo base -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07291e" />
+      <stop offset="100%" stop-color="#0d3b2c" />
+    </linearGradient>
+
+    <!-- Gradiente para el flujo de datos -->
+    <linearGradient id="dataFlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0" />
+      <stop offset="50%" stop-color="#34d399" stop-opacity="1" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Patrón de puntos (Grid) -->
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#10b981" opacity="0.15" />
+    </pattern>
+  </defs>
+
+  <!-- Fondo general -->
+  <rect width="100%" height="100%" fill="url(#bgGrad)" />
+  <rect width="100%" height="100%" fill="url(#grid)" />
+
+  <!-- LADO IZQUIERDO: Representación de Imagen (Paisaje) -->
+  <g transform="translate(40, 50)">
+    <!-- Marco -->
+    <rect width="80" height="100" rx="8" fill="#07291e" stroke="#10b981" stroke-width="2" />
+    <!-- Sol -->
+    <circle cx="25" cy="35" r="10" fill="#34d399" opacity="0.9" />
+    <!-- Montañas -->
+    <path d="M 5 95 L 35 60 L 55 80 L 75 55 L 75 95 Z" fill="#10b981" opacity="0.5" />
+  </g>
+
+  <!-- CENTRO: Flujo de conversión (Datos viajando) -->
+  <g transform="translate(130, 0)">
+    <!-- Líneas de datos curvadas -->
+    <path d="M 0 100 C 50 100, 90 50, 140 100" fill="none" stroke="url(#dataFlow)" stroke-width="3" stroke-dasharray="10 6" />
+    <path d="M 0 120 C 50 120, 90 160, 140 120" fill="none" stroke="url(#dataFlow)" stroke-width="2" stroke-dasharray="5 5" opacity="0.7" />
+    <path d="M 0 80 C 50 80, 90 130, 140 80" fill="none" stroke="url(#dataFlow)" stroke-width="1.5" stroke-dasharray="15 8" opacity="0.5" />
+    
+    <!-- Partículas flotantes (Gooey effect vibes) -->
+    <circle cx="30" cy="95" r="3" fill="#34d399" />
+    <circle cx="70" cy="70" r="4" fill="#34d399" opacity="0.8" />
+    <circle cx="110" cy="110" r="2.5" fill="#34d399" opacity="0.9" />
+  </g>
+
+  <!-- LADO DERECHO: Representación de Código (Base64) -->
+  <g transform="translate(280, 50)">
+    <!-- Marco de terminal/código -->
+    <rect width="80" height="100" rx="8" fill="#07291e" stroke="#10b981" stroke-width="2" stroke-dasharray="4 4"/>
+    
+    <!-- Líneas de código base64 abstractas -->
+    <rect x="15" y="20" width="30" height="6" rx="3" fill="#34d399" />
+    <rect x="15" y="35" width="50" height="4" rx="2" fill="#10b981" opacity="0.7" />
+    <rect x="15" y="50" width="45" height="4" rx="2" fill="#10b981" opacity="0.7" />
+    <rect x="15" y="65" width="55" height="4" rx="2" fill="#10b981" opacity="0.7" />
+    <rect x="15" y="80" width="35" height="4" rx="2" fill="#10b981" opacity="0.7" />
+  </g>
+</svg>

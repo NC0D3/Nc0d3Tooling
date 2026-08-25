@@ -1,15 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById('tools-grid');
   const searchInput = document.getElementById('search-input');
-  let tools = [];
+  let loadedTools = [];
 
-  async function loadTools() {
+  async function init() {
     try {
-      const response = await fetch('./tools.json');
-      tools = await response.json();
-      renderTools(tools);
+      const resList = await fetch('./tools.json');
+      const toolFolderNames = await resList.json();
+
+      const fetchPromises = toolFolderNames.map(async (folder) => {
+        const res = await fetch(`./tools/${folder}/${folder}.json`);
+        const data = await res.json();
+        return {
+          ...data,
+          image: `./tools/${folder}/${data.image}`,
+          url: `./tools/${folder}/${data.url}`
+        };
+      });
+
+      loadedTools = await Promise.all(fetchPromises);
+      renderTools(loadedTools);
     } catch (error) {
-      grid.innerHTML = `<p style="color: #ef4444;">Error cargando herramientas.</p>`;
+      grid.innerHTML = `<p style="color: #ef4444; grid-column: 1/-1; text-align: center;">Error al cargar las herramientas.</p>`;
     }
   }
 
@@ -21,18 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     grid.innerHTML = items.map(tool => `
       <a href="${tool.url}" class="tool-card">
-        <div class="tool-header">
-          <img src="${tool.icon}" alt="${tool.name}" class="tool-icon" />
-          <h2 class="tool-title">${tool.name}</h2>
+        <div class="tool-cover-container">
+          <img src="${tool.image}" alt="${tool.name}" class="tool-cover" />
         </div>
-        <p class="tool-desc">${tool.description}</p>
-        <div class="tool-footer">
-          <div class="tags">
-            ${tool.tags.map(t => `<span class="tag">#${t}</span>`).join('')}
-          </div>
-          <div class="gooey-wrapper">
-            <span class="gooey-btn">Abrir →</span>
-          </div>
+        <div class="tool-content">
+          <h2 class="tool-title">${tool.name}</h2>
+          <p class="tool-desc">${tool.description}</p>
         </div>
       </a>
     `).join('');
@@ -40,13 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   searchInput.addEventListener('input', (e) => {
     const query = e.target.value.toLowerCase().trim();
-    const filtered = tools.filter(tool => 
+    const filtered = loadedTools.filter(tool => 
       tool.name.toLowerCase().includes(query) ||
-      tool.description.toLowerCase().includes(query) ||
-      tool.tags.some(tag => tag.toLowerCase().includes(query))
+      tool.description.toLowerCase().includes(query)
     );
     renderTools(filtered);
   });
 
-  loadTools();
+  init();
 });

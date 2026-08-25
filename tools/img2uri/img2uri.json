@@ -1,0 +1,7 @@
+{
+  "id": "img2uri",
+  "name": "Image to Data URI",
+  "description": "Convierte tus imágenes a cadenas base64 de manera estática y segura para incrustarlas directo en tu código sin peticiones HTTP extras.",
+  "image": "img2uri.svg",
+  "url": "img2uri.html"
+}

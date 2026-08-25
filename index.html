@@ -3,21 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hub de Herramientas Estáticas</title>
+  <title>Nc0d3Tools</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <!-- Filtro SVG Gooey Global -->
   <svg style="position: absolute; width: 0; height: 0; pointer-events: none;">
     <defs>
-      <filter id="gooey-effect">
-        <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
-        <feColorMatrix 
-          in="blur" 
-          mode="matrix" 
-          values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" 
-          result="goo" 
-        />
+      <filter id="gooey">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="goo" />
         <feComposite in="SourceGraphic" in2="goo" operator="atop" />
       </filter>
     </defs>
@@ -25,14 +20,9 @@
 
   <header class="main-header">
     <div class="header-content">
-      <h1 class="logo">Tool<span>Hub</span></h1>
+      <h1 class="logo">Nc0d3<span>Tools</span></h1>
       <div class="search-container">
-        <input 
-          type="text" 
-          id="search-input" 
-          placeholder="Buscar herramienta por nombre o tag..." 
-          autocomplete="off"
-        />
+        <input type="text" id="search-input" placeholder="Buscar herramienta..." autocomplete="off" />
         <span class="search-icon">🔍</span>
       </div>
     </div>
@@ -40,7 +30,7 @@
 
   <main class="container">
     <section id="tools-grid" class="tools-grid">
-      <!-- Cards renderizadas dinámicamente -->
+      <!-- Cards dinámicas -->
     </section>
   </main>
 
