@@ -1,5 +1,6 @@
 [
   "img2uri",
   "uuidv4",
-  "uuidv6"
+  "uuidv6",
+  "randstring"
 ]

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Random String - Nc0d3Tools</title>
+  <style>
+    :root {
+      --verde-botella: #07291e;
+      --verde-botella-light: #0d3b2c;
+      --verde-esmeralda: #10b981;
+      --verde-esmeralda-glow: #34d399;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+
+    body {
+      background-color: var(--verde-botella);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header y Botón Back */
+    .main-header {
+      background: rgba(7, 41, 30, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 1.5rem; }
+
+    .back-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--verde-esmeralda); cursor: pointer; transition: all 0.3s ease; text-decoration: none;
+    }
+    .back-btn:hover { background: rgba(16, 185, 129, 0.1); transform: scale(1.05); }
+
+    .logo { font-size: 1.4rem; font-weight: 800; color: #ffffff; }
+    .logo span { color: var(--verde-esmeralda); }
+
+    /* Contenedor Principal (Centrado) */
+    .tool-container {
+      max-width: 600px; margin: 3rem auto; padding: 0 2rem;
+      display: flex; flex-direction: column; gap: 2rem;
+      flex: 1; width: 100%;
+    }
+
+    .output-section {
+      background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.2);
+      border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem;
+    }
+
+    .output-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(16, 185, 129, 0.1); padding-bottom: 1rem; }
+    .output-header h2 { font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 0.5rem; }
+    .header-icon { width: 22px; height: 22px; color: var(--verde-esmeralda); }
+
+    /* Controles */
+    .control-group { display: flex; flex-direction: column; gap: 0.8rem; }
+    .control-group label { font-size: 0.95rem; color: var(--text-muted); font-weight: 600; }
+    
+    .length-input-container { display: flex; align-items: center; gap: 1rem; }
+
+    input[type="number"] {
+      width: 60px; padding: 0.5rem; border-radius: 8px; background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(16, 185, 129, 0.3); color: #fff; font-size: 1rem; font-weight: bold; text-align: center; outline: none; transition: all 0.3s;
+    }
+    input[type="number"]:focus { border-color: var(--verde-esmeralda); }
+    input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+    /* Custom Slider */
+    input[type="range"] {
+      flex: 1; -webkit-appearance: none; background: transparent; height: 24px; cursor: pointer;
+    }
+    input[type="range"]:focus { outline: none; }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%; height: 6px; background: rgba(16, 185, 129, 0.2); border-radius: 3px; border: 1px solid rgba(16, 185, 129, 0.1);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      height: 18px; width: 18px; border-radius: 50%; background: var(--verde-esmeralda); margin-top: -6px; -webkit-appearance: none; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+
+    /* Botón Generar */
+    .generate-btn {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.8rem;
+      background: var(--verde-esmeralda); color: var(--verde-botella); border: none; border-radius: 8px;
+      font-weight: bold; font-size: 1rem; cursor: pointer; transition: all 0.3s ease;
+    }
+    .generate-btn:hover { background: var(--verde-esmeralda-glow); transform: translateY(-2px); }
+
+    /* Textarea y Botón Copiar */
+    .result-wrapper { position: relative; margin-top: 1rem; }
+    textarea {
+      width: 100%; padding: 1.2rem 4rem 1.2rem 1.2rem; border-radius: 8px; border: 1px dashed rgba(16, 185, 129, 0.3);
+      background: rgba(0, 0, 0, 0.2); color: var(--verde-esmeralda-glow); font-family: monospace;
+      font-size: 1.5rem; letter-spacing: 4px; resize: none; outline: none; text-align: center; height: 80px; overflow: hidden; line-height: 2.2;
+    }
+
+    .copy-btn {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;
+      background: rgba(0,0,0,0.2); border: 1px solid var(--verde-esmeralda); color: var(--verde-esmeralda);
+      border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.3s ease;
+    }
+    .copy-btn:hover { background: var(--verde-esmeralda); color: var(--verde-botella); }
+    .copy-btn svg { width: 16px; height: 16px; }
+
+  </style>
+</head>
+<body>
+
+  <header class="main-header">
+    <div class="header-left">
+      <a href="../../index.html" class="back-btn" title="Volver al Hub">
+        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <h1 class="logo">Nc0d3<span>Tools</span></h1>
+    </div>
+  </header>
+
+  <main class="tool-container">
+    <div class="output-section">
+      
+      <div class="output-header">
+        <h2>
+          <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+            <path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+          </svg>
+          Generador Random String
+        </h2>
+      </div>
+
+      <div class="control-group">
+        <label for="length-slider">Longitud (1 - 10 caracteres)</label>
+        <div class="length-input-container">
+          <input type="range" id="length-slider" min="1" max="10" value="8" />
+          <input type="number" id="length-number" min="1" max="10" value="8" />
+        </div>
+      </div>
+
+      <button id="generate-btn" class="generate-btn">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+        Generar Nuevo
+      </button>
+
+      <div class="result-wrapper">
+        <textarea id="result-box" readonly></textarea>
+        <button class="copy-btn" id="copy-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-linejoin="round"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="copy-text">Copiar</span>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module" src="randstring.js"></script>
+</body>
+</html>

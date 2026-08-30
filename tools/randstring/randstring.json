@@ -1,0 +1,7 @@
+{
+  "id": "randstring",
+  "name": "Random String",
+  "description": "Genera cadenas alfanuméricas aleatorias (A-Z, 0-9) de 1 a 10 caracteres. Ideal para códigos, tokens cortos o identificadores.",
+  "image": "randstring.svg",
+  "url": "randstring.html"
+}

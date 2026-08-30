@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" width="100%" height="100%">
+  <!-- Fondo botella profundo -->
+  <rect width="300" height="150" fill="#07291e" />
+  
+  <!-- Patrón de celdas tipo grid técnico -->
+  <pattern id="gridRand" width="20" height="20" patternUnits="userSpaceOnUse">
+    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#10b981" stroke-width="0.5" stroke-opacity="0.15" />
+  </pattern>
+  <rect width="300" height="150" fill="url(#gridRand)" />
+
+  <!-- Bloque izquierdo: Identificador de la herramienta -->
+  <g transform="translate(25, 25)">
+    <rect width="80" height="100" rx="10" fill="none" stroke="#10b981" stroke-width="2" stroke-opacity="0.6" />
+    <circle cx="20" cy="20" r="6" fill="#10b981" opacity="0.8" />
+    <!-- Texto STR (String) grande -->
+    <text x="12" y="75" font-family="system-ui, sans-serif" font-weight="900" font-size="42" fill="#34d399">STR</text>
+  </g>
+
+  <!-- Polvo de datos / Bits dispersos -->
+  <g fill="#34d399">
+    <rect x="125" y="45" width="4" height="4" opacity="0.9" />
+    <rect x="145" y="35" width="4" height="4" opacity="0.5" />
+    <rect x="135" y="85" width="4" height="4" opacity="0.8" />
+    <rect x="165" y="65" width="4" height="4" opacity="0.4" />
+    <rect x="195" y="40" width="4" height="4" opacity="0.7" />
+    <rect x="185" y="90" width="4" height="4" opacity="0.6" />
+    <rect x="225" y="55" width="4" height="4" opacity="0.3" />
+    <rect x="250" y="75" width="4" height="4" opacity="0.8" />
+  </g>
+
+  <!-- Representación de caracteres aleatorios generados en slots -->
+  <g transform="translate(130, 60)" font-family="monospace" font-size="16" font-weight="bold" fill="#34d399">
+    <!-- Slot 1 -->
+    <rect x="0" y="0" width="24" height="28" rx="4" fill="#0d3b2c" stroke="#10b981" stroke-width="1.5" />
+    <text x="7" y="19" fill="#e2e8f0">X</text>
+    
+    <!-- Slot 2 -->
+    <rect x="32" y="0" width="24" height="28" rx="4" fill="#10b981" />
+    <text x="39" y="19" fill="#07291e">7</text>
+
+    <!-- Slot 3 -->
+    <rect x="64" y="0" width="24" height="28" rx="4" fill="#0d3b2c" stroke="#34d399" stroke-width="1.5" />
+    <text x="71" y="19" fill="#e2e8f0">B</text>
+
+    <!-- Slot 4 -->
+    <rect x="96" y="0" width="24" height="28" rx="4" fill="#0d3b2c" stroke="#10b981" stroke-width="1.5" />
+    <text x="103" y="19" fill="#e2e8f0">9</text>
+    
+    <!-- Línea conectora inferior para denotar longitud -->
+    <path d="M 0 38 L 120 38" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="4 4" opacity="0.5" />
+    <circle cx="60" cy="38" r="3" fill="#10b981" />
+  </g>
+
+  <!-- Línea inferior de cierre -->
+  <path d="M 0 148 L 300 148" stroke="#10b981" stroke-width="4" opacity="0.3" />
+</svg>
