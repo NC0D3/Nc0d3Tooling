@@ -1,150 +1,4890 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Concept Doc Editor - Nc0d3Tools</title>
-  <style>
-    :root {
-      --verde-botella: #07291e;
-      --verde-botella-light: #0d3b2c;
-      --verde-esmeralda: #10b981;
-      --verde-esmeralda-glow: #34d399;
-      --text-main: #e2e8f0;
-      --text-muted: #94a3b8;
+<meta charset="UTF-8">
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+>
+
+<title>Concept Documentation Editor</title>
+
+<style>
+
+/* ============================================================
+   VARIABLES
+============================================================ */
+
+:root {
+
+    --bg:
+        #071412;
+
+    --bg-2:
+        #0b1c18;
+
+    --panel:
+        #10251f;
+
+    --panel-2:
+        #153029;
+
+    --input:
+        #091914;
+
+    --border:
+        #245247;
+
+    --border-soft:
+        #1a4037;
+
+    --emerald:
+        #1f8f72;
+
+    --emerald-light:
+        #2bb891;
+
+    --emerald-dark:
+        #12644f;
+
+    --bottle:
+        #123f35;
+
+    --text:
+        #edf7f3;
+
+    --muted:
+        #8da8a0;
+
+    --danger:
+        #c65c64;
+
+    --gold:
+        #bc955b;
+
+}
+
+
+/* ============================================================
+   GLOBAL
+============================================================ */
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+
+    margin: 0;
+
+    min-height: 100vh;
+
+    background:
+        radial-gradient(
+            circle at top left,
+            rgba(31,143,114,.13),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at bottom right,
+            rgba(18,100,79,.15),
+            transparent 40%
+        ),
+        var(--bg);
+
+    color:
+        var(--text);
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    overflow-x: hidden;
+
+}
+
+button,
+input {
+
+    font:
+        inherit;
+
+}
+
+button {
+
+    -webkit-tap-highlight-color:
+        transparent;
+
+}
+
+
+/* ============================================================
+   APP
+============================================================ */
+
+.app {
+
+    width:
+        min(1500px, 96%);
+
+    margin:
+        30px auto 50px;
+
+}
+
+header {
+
+    margin-bottom:
+        25px;
+
+}
+
+header h1 {
+
+    margin:
+        0;
+
+    font-size:
+        clamp(24px, 3vw, 31px);
+
+    letter-spacing:
+        -.6px;
+
+}
+
+header p {
+
+    color:
+        var(--muted);
+
+    margin:
+        7px 0 0;
+
+    line-height:
+        1.5;
+
+}
+
+
+/* ============================================================
+   LAYOUT
+============================================================ */
+
+.layout {
+
+    display:
+        grid;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+
+    gap:
+        20px;
+
+    align-items:
+        start;
+
+}
+
+.panel {
+
+    background:
+        rgba(16,37,31,.94);
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        15px;
+
+    overflow:
+        hidden;
+
+    box-shadow:
+        0 15px 50px
+        rgba(0,0,0,.22);
+
+    min-width:
+        0;
+
+}
+
+.panel-header {
+
+    padding:
+        14px 18px;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--panel-2),
+            var(--bottle)
+        );
+
+    border-bottom:
+        1px solid
+        var(--border);
+
+    font-weight:
+        800;
+
+    letter-spacing:
+        .2px;
+
+}
+
+.form {
+
+    padding:
+        20px;
+
+}
+
+
+/* ============================================================
+   INPUTS
+============================================================ */
+
+.field {
+
+    margin-bottom:
+        22px;
+
+}
+
+.field > label {
+
+    display:
+        block;
+
+    margin-bottom:
+        8px;
+
+    font-weight:
+        750;
+
+}
+
+input[type="text"],
+input[type="url"] {
+
+    width:
+        100%;
+
+    min-width:
+        0;
+
+    background:
+        var(--input);
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        8px;
+
+    color:
+        var(--text);
+
+    padding:
+        11px 13px;
+
+    outline:
+        none;
+
+    transition:
+        .15s;
+
+}
+
+input[type="text"]:focus,
+input[type="url"]:focus {
+
+    border-color:
+        var(--emerald-light);
+
+    box-shadow:
+        0 0 0 2px
+        rgba(43,184,145,.1);
+
+}
+
+
+/* ============================================================
+   REQUIRED
+============================================================ */
+
+.required {
+
+    color:
+        var(--emerald-light);
+
+    margin-left:
+        3px;
+
+}
+
+.validation-message {
+
+    display:
+        none;
+
+    color:
+        #ff8585;
+
+    font-size:
+        12px;
+
+    margin-top:
+        6px;
+
+}
+
+.field.invalid >
+.validation-message {
+
+    display:
+        block;
+
+}
+
+.field.invalid input[type="text"] {
+
+    border-color:
+        var(--danger);
+
+}
+
+.field.invalid .editor {
+
+    border-color:
+        var(--danger);
+
+}
+
+.field.invalid .image-zone {
+
+    border-color:
+        var(--danger);
+
+}
+
+
+/* ============================================================
+   METADATA
+============================================================ */
+
+.metadata {
+
+    background:
+        #081510;
+
+    border:
+        1px solid
+        var(--border-soft);
+
+    border-radius:
+        9px;
+
+    padding:
+        12px;
+
+    margin-bottom:
+        22px;
+
+    font-family:
+        monospace;
+
+    font-size:
+        12px;
+
+    color:
+        #91b4aa;
+
+    overflow-x:
+        auto;
+
+}
+
+.metadata div {
+
+    margin:
+        4px 0;
+
+    white-space:
+        nowrap;
+
+}
+
+
+/* ============================================================
+   EDITOR
+============================================================ */
+
+.editor {
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        9px;
+
+    overflow:
+        hidden;
+
+    background:
+        var(--input);
+
+}
+
+
+/* ============================================================
+   TOOLBAR
+============================================================ */
+
+.toolbar {
+
+    display:
+        flex;
+
+    flex-wrap:
+        nowrap;
+
+    gap:
+        4px;
+
+    padding:
+        7px;
+
+    background:
+        linear-gradient(
+            90deg,
+            #112b24,
+            #0f241f
+        );
+
+    border-bottom:
+        1px solid
+        var(--border);
+
+    user-select:
+        none;
+
+    overflow-x:
+        auto;
+
+    overflow-y:
+        hidden;
+
+    scrollbar-width:
+        thin;
+
+    -webkit-overflow-scrolling:
+        touch;
+
+}
+
+.toolbar::-webkit-scrollbar {
+
+    height:
+        5px;
+
+}
+
+.toolbar::-webkit-scrollbar-thumb {
+
+    background:
+        var(--border);
+
+    border-radius:
+        10px;
+
+}
+
+.toolbar-group {
+
+    display:
+        flex;
+
+    flex:
+        0 0 auto;
+
+    gap:
+        3px;
+
+    padding-right:
+        6px;
+
+    margin-right:
+        4px;
+
+    border-right:
+        1px solid
+        var(--border-soft);
+
+}
+
+.toolbar-group:last-child {
+
+    border-right:
+        none;
+
+}
+
+.toolbar button {
+
+    min-width:
+        36px;
+
+    height:
+        34px;
+
+    flex:
+        0 0 auto;
+
+    border:
+        1px solid
+        transparent;
+
+    background:
+        transparent;
+
+    color:
+        #bdd0ca;
+
+    border-radius:
+        6px;
+
+    cursor:
+        pointer;
+
+    font-size:
+        13px;
+
+    font-weight:
+        650;
+
+    transition:
+        background .12s,
+        color .12s,
+        border .12s,
+        transform .08s;
+
+}
+
+.toolbar button:hover {
+
+    background:
+        rgba(43,184,145,.11);
+
+    color:
+        var(--emerald-light);
+
+    border-color:
+        var(--border);
+
+}
+
+.toolbar button:active {
+
+    transform:
+        translateY(1px);
+
+}
+
+.toolbar button.active {
+
+    background:
+        var(--emerald-dark);
+
+    border-color:
+        var(--emerald);
+
+    color:
+        #d8fff2;
+
+    box-shadow:
+        inset 0 0 0 1px
+        rgba(43,184,145,.12),
+        0 0 10px
+        rgba(31,143,114,.12);
+
+}
+
+.toolbar button.normal-button {
+
+    padding:
+        0 9px;
+
+    min-width:
+        auto;
+
+}
+
+
+/* ============================================================
+   CONTENT EDITOR
+============================================================ */
+
+.content-editor {
+
+    min-height:
+        150px;
+
+    padding:
+        14px;
+
+    outline:
+        none;
+
+    line-height:
+        1.65;
+
+    cursor:
+        text;
+
+    overflow-wrap:
+        anywhere;
+
+    word-break:
+        break-word;
+
+}
+
+.content-editor:empty::before {
+
+    content:
+        attr(data-placeholder);
+
+    color:
+        #526d64;
+
+    pointer-events:
+        none;
+
+}
+
+.content-editor h2,
+.content-editor h3,
+.content-editor h4,
+.content-editor h5,
+.content-editor h6 {
+
+    margin:
+        12px 0 8px;
+
+}
+
+.content-editor a {
+
+    color:
+        #61d6ff;
+
+    text-decoration:
+        underline;
+
+}
+
+.content-editor img {
+
+    max-width:
+        100%;
+
+}
+
+
+/* ============================================================
+   IMAGE ZONE
+============================================================ */
+
+.image-zone {
+
+    border:
+        2px dashed
+        var(--border);
+
+    border-radius:
+        10px;
+
+    min-height:
+        160px;
+
+    padding:
+        15px;
+
+    text-align:
+        center;
+
+    transition:
+        .15s;
+
+}
+
+.image-zone.dragging {
+
+    border-color:
+        var(--emerald-light);
+
+    background:
+        rgba(31,143,114,.09);
+
+    box-shadow:
+        inset 0 0 30px
+        rgba(31,143,114,.04);
+
+}
+
+.image-zone p {
+
+    color:
+        var(--muted);
+
+    margin:
+        15px 0;
+
+    line-height:
+        1.5;
+
+}
+
+.image-actions {
+
+    display:
+        flex;
+
+    justify-content:
+        center;
+
+    gap:
+        8px;
+
+    flex-wrap:
+        wrap;
+
+}
+
+.image-actions button,
+.secondary {
+
+    border:
+        1px solid
+        var(--border);
+
+    background:
+        #0d211b;
+
+    color:
+        var(--text);
+
+    border-radius:
+        7px;
+
+    padding:
+        9px 13px;
+
+    cursor:
+        pointer;
+
+    min-height:
+        38px;
+
+}
+
+.image-actions button:hover,
+.secondary:hover {
+
+    border-color:
+        var(--emerald);
+
+    color:
+        var(--emerald-light);
+
+}
+
+
+/* ============================================================
+   IMAGES
+============================================================ */
+
+.images {
+
+    display:
+        grid;
+
+    grid-template-columns:
+        repeat(
+            auto-fill,
+            minmax(170px, 1fr)
+        );
+
+    gap:
+        12px;
+
+    margin-top:
+        15px;
+
+}
+
+.image-card {
+
+    position:
+        relative;
+
+    background:
+        #08130f;
+
+    border:
+        1px solid
+        var(--border-soft);
+
+    border-radius:
+        9px;
+
+    padding:
+        8px;
+
+    overflow:
+        hidden;
+
+    min-width:
+        0;
+
+}
+
+.image-card img {
+
+    display:
+        block;
+
+    width:
+        100%;
+
+    height:
+        130px;
+
+    object-fit:
+        contain;
+
+    background:
+        #040806;
+
+    border-radius:
+        5px;
+
+}
+
+.image-card input {
+
+    width:
+        100%;
+
+    margin-top:
+        7px;
+
+    background:
+        #10221c;
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        5px;
+
+    color:
+        var(--text);
+
+    padding:
+        8px;
+
+    font-size:
+        12px;
+
+}
+
+.remove-image {
+
+    position:
+        absolute;
+
+    right:
+        12px;
+
+    top:
+        12px;
+
+    border:
+        1px solid
+        rgba(255,255,255,.15);
+
+    background:
+        rgba(0,0,0,.75);
+
+    color:
+        white;
+
+    width:
+        30px;
+
+    height:
+        30px;
+
+    border-radius:
+        50%;
+
+    cursor:
+        pointer;
+
+}
+
+
+/* ============================================================
+   ACTIONS
+============================================================ */
+
+.actions {
+
+    display:
+        flex;
+
+    justify-content:
+        flex-end;
+
+    gap:
+        10px;
+
+    margin-top:
+        20px;
+
+}
+
+.primary {
+
+    border:
+        0;
+
+    border-radius:
+        8px;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--emerald),
+            var(--emerald-dark)
+        );
+
+    color:
+        white;
+
+    padding:
+        12px 22px;
+
+    min-height:
+        44px;
+
+    font-weight:
+        800;
+
+    cursor:
+        pointer;
+
+    box-shadow:
+        0 5px 20px
+        rgba(31,143,114,.15);
+
+}
+
+.primary:hover {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--emerald-light),
+            var(--emerald)
+        );
+
+}
+
+
+/* ============================================================
+   PREVIEW
+============================================================ */
+
+.preview {
+
+    padding:
+        30px;
+
+    min-height:
+        700px;
+
+    background:
+        #f4f8f6;
+
+    color:
+        #17221e;
+
+    overflow-wrap:
+        anywhere;
+
+    word-break:
+        break-word;
+
+}
+
+.preview h1 {
+
+    font-size:
+        clamp(26px, 4vw, 32px);
+
+    border-bottom:
+        2px solid
+        #d5dedb;
+
+    padding-bottom:
+        10px;
+
+}
+
+.preview h2 {
+
+    margin-top:
+        35px;
+
+    border-bottom:
+        1px solid
+        #d5dedb;
+
+    padding-bottom:
+        5px;
+
+}
+
+.preview a {
+
+    color:
+        #087d63;
+
+}
+
+.preview .evidence {
+
+    text-align:
+        center;
+
+    margin:
+        22px 0;
+
+}
+
+.preview .evidence img {
+
+    display:
+        inline-block;
+
+    max-width:
+        100%;
+
+    max-height:
+        500px;
+
+    object-fit:
+        contain;
+
+}
+
+
+/* ============================================================
+   DIALOG
+============================================================ */
+
+dialog {
+
+    border:
+        1px solid
+        var(--border);
+
+    border-radius:
+        12px;
+
+    background:
+        var(--panel);
+
+    color:
+        var(--text);
+
+    padding:
+        0;
+
+    width:
+        min(450px, calc(100vw - 30px));
+
+    max-width:
+        calc(100vw - 30px);
+
+    box-shadow:
+        0 25px 100px
+        rgba(0,0,0,.5);
+
+}
+
+dialog::backdrop {
+
+    background:
+        rgba(0,0,0,.72);
+
+}
+
+.dialog-content {
+
+    padding:
+        22px;
+
+}
+
+.dialog-content h3 {
+
+    margin-top:
+        0;
+
+}
+
+.dialog-content label {
+
+    display:
+        block;
+
+    font-size:
+        13px;
+
+    margin-bottom:
+        5px;
+
+    color:
+        var(--muted);
+
+}
+
+.dialog-content input {
+
+    margin-bottom:
+        14px;
+
+}
+
+.dialog-actions {
+
+    display:
+        flex;
+
+    justify-content:
+        flex-end;
+
+    gap:
+        8px;
+
+    margin-top:
+        5px;
+
+}
+
+
+/* ============================================================
+   TABLET
+============================================================ */
+
+@media (max-width: 1050px) {
+
+    .layout {
+
+        grid-template-columns:
+            1fr;
+
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+    .preview {
+
+        min-height:
+            auto;
+
+    }
+
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 600px) {
 
     body {
-      background-color: var(--verde-botella);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+
+        font-size:
+            15px;
+
     }
 
-    /* Header */
-    .main-header {
-      background: rgba(7, 41, 30, 0.95);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(16, 185, 129, 0.2);
-      padding: 1rem 2rem;
-      display: flex; justify-content: space-between; align-items: center;
-      position: sticky; top: 0; z-index: 10;
-    }
-    .header-left { display: flex; align-items: center; gap: 1.5rem; }
-    .back-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 40px; height: 40px; border-radius: 50%; background: var(--verde-botella-light);
-      border: 1px solid rgba(16, 185, 129, 0.3); color: var(--verde-esmeralda);
-      cursor: pointer; transition: all 0.3s ease; text-decoration: none;
-    }
-    .back-btn:hover { background: rgba(16, 185, 129, 0.1); transform: scale(1.05); }
-    .logo { font-size: 1.4rem; font-weight: 800; color: #ffffff; }
-    .logo span { color: var(--verde-esmeralda); }
 
-    /* Layout Principal */
-    .editor-container { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; width: 100%; display: flex; flex-direction: column; gap: 1.5rem; }
-    
-    .form-card {
-      background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.2);
-      border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+    .app {
+
+        width:
+            100%;
+
+        margin:
+            0;
+
+        padding:
+            16px 10px 35px;
+
     }
 
-    .form-card h3 { font-size: 1.1rem; color: var(--verde-esmeralda); margin-bottom: 0.5rem; border-bottom: 1px solid rgba(16,185,129,0.2); padding-bottom: 0.5rem;}
-    
-    /* Inputs */
-    .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
-    label { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
-    input[type="text"] {
-      width: 100%; padding: 0.8rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);
-      background: rgba(0, 0, 0, 0.2); color: #fff; font-size: 1rem; outline: none; transition: border 0.3s;
-    }
-    input[type="text"]:focus, textarea:focus { border-color: var(--verde-esmeralda); }
 
-    /* Rich Text Area */
-    .rt-toolbar { display: flex; gap: 0.5rem; background: rgba(0,0,0,0.3); padding: 0.5rem; border-radius: 6px 6px 0 0; border: 1px solid rgba(16, 185, 129, 0.3); border-bottom: none; }
-    .rt-btn { background: var(--verde-botella-light); border: 1px solid rgba(16, 185, 129, 0.5); color: var(--text-main); border-radius: 4px; padding: 0.3rem 0.6rem; font-size: 0.85rem; cursor: pointer; transition: 0.2s; font-weight: bold; }
-    .rt-btn:hover { background: var(--verde-esmeralda); color: var(--verde-botella); }
-    textarea {
-      width: 100%; height: 120px; padding: 0.8rem; border-radius: 0 0 6px 6px; border: 1px solid rgba(16, 185, 129, 0.3);
-      background: rgba(0, 0, 0, 0.2); color: #fff; font-size: 0.95rem; resize: vertical; outline: none; font-family: monospace;
+    header {
+
+        margin-bottom:
+            18px;
+
+        padding:
+            0 4px;
+
     }
 
-    /* Evidencia Visual Dropzone */
-    .drop-zone {
-      border: 2px dashed rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 2rem;
-      text-align: center; cursor: pointer; transition: all 0.3s; background: rgba(0,0,0,0.1);
-    }
-    .drop-zone.active { border-color: var(--verde-esmeralda); background: rgba(16,185,129,0.05); }
-    .drop-zone p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; }
-    
-    .gallery { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; }
-    .img-preview { width: 100px; height: 100px; border-radius: 6px; object-fit: cover; border: 1px solid var(--verde-esmeralda); }
-    .img-wrapper { position: relative; display: inline-block; }
-    .remove-img { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-weight: bold; font-size: 12px; }
 
-    /* Footer / Submit */
-    .actions { display: flex; justify-content: flex-end; padding: 1rem 0 3rem 0; }
-    .submit-btn {
-      padding: 1rem 2rem; font-size: 1.1rem; font-weight: bold; color: var(--verde-botella);
-      background: var(--verde-esmeralda); border: none; border-radius: 8px; cursor: pointer; transition: 0.3s;
-    }
-    .submit-btn:hover { background: var(--verde-esmeralda-glow); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+    header h1 {
 
-  </style>
+        font-size:
+            25px;
+
+    }
+
+
+    header p {
+
+        font-size:
+            13px;
+
+    }
+
+
+    .layout {
+
+        gap:
+            14px;
+
+    }
+
+
+    .panel {
+
+        border-radius:
+            11px;
+
+    }
+
+
+    .panel-header {
+
+        padding:
+            13px 14px;
+
+    }
+
+
+    .form {
+
+        padding:
+            14px;
+
+    }
+
+
+    .field {
+
+        margin-bottom:
+            18px;
+
+    }
+
+
+    input[type="text"],
+    input[type="url"] {
+
+        font-size:
+            16px;
+
+        padding:
+            12px;
+
+    }
+
+
+    .metadata {
+
+        font-size:
+            10px;
+
+        padding:
+            10px;
+
+    }
+
+
+    .content-editor {
+
+        min-height:
+            140px;
+
+        padding:
+            13px;
+
+        font-size:
+            16px;
+
+    }
+
+
+    .toolbar {
+
+        padding:
+            6px;
+
+        gap:
+            3px;
+
+    }
+
+
+    .toolbar button {
+
+        min-width:
+            40px;
+
+        height:
+            38px;
+
+        font-size:
+            13px;
+
+    }
+
+
+    .toolbar button.normal-button {
+
+        padding:
+            0 10px;
+
+    }
+
+
+    .image-zone {
+
+        padding:
+            12px;
+
+    }
+
+
+    .images {
+
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+
+        gap:
+            8px;
+
+    }
+
+
+    .image-card {
+
+        padding:
+            6px;
+
+    }
+
+
+    .image-card img {
+
+        height:
+            110px;
+
+    }
+
+
+    .image-card input {
+
+        font-size:
+            12px;
+
+    }
+
+
+    .actions {
+
+        flex-direction:
+            column-reverse;
+
+    }
+
+
+    .actions button {
+
+        width:
+            100%;
+
+    }
+
+
+    .primary,
+    .secondary {
+
+        min-height:
+            46px;
+
+    }
+
+
+    .preview {
+
+        padding:
+            18px;
+
+        font-size:
+            15px;
+
+    }
+
+
+    .preview h1 {
+
+        margin-top:
+            0;
+
+    }
+
+
+    .preview h2 {
+
+        margin-top:
+            27px;
+
+    }
+
+
+    dialog {
+
+        width:
+            calc(100vw - 24px);
+
+        max-width:
+            calc(100vw - 24px);
+
+    }
+
+
+    .dialog-content {
+
+        padding:
+            17px;
+
+    }
+
+
+    .dialog-actions {
+
+        flex-direction:
+            column-reverse;
+
+    }
+
+
+    .dialog-actions button {
+
+        width:
+            100%;
+
+    }
+
+}
+
+
+/* ============================================================
+   VERY SMALL PHONES
+============================================================ */
+
+@media (max-width: 380px) {
+
+    .app {
+
+        padding:
+            12px 7px 25px;
+
+    }
+
+
+    .form {
+
+        padding:
+            11px;
+
+    }
+
+
+    .images {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+
+    .image-card img {
+
+        height:
+            180px;
+
+    }
+
+}
+
+</style>
 </head>
+
+
 <body>
 
-  <header class="main-header">
-    <div class="header-left">
-      <a href="../../index.html" class="back-btn" title="Volver al Hub">
-        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-      <h1 class="logo">Nc0d3<span>ConceptDoc</span></h1>
-    </div>
-  </header>
+<div class="app">
 
-  <main class="editor-container">
-    
-    <!-- Metadatos -->
-    <div class="form-card">
-      <h3>1. Metadatos Principales</h3>
-      <div class="input-group">
-        <label>ID de la Persona (Author ID)</label>
-        <input type="text" id="field-author" placeholder="Ej. 1212121212" />
-      </div>
-      <div class="input-group">
-        <label>Nombre de la Idea (Title)</label>
-        <input type="text" id="field-title" placeholder="Ej. Dummy data generator" />
-      </div>
-    </div>
+<header>
 
-    <!-- Campos de Texto con Markdown -->
-    <div class="form-card" id="text-fields-container">
-      <h3>2. Contenido del Documento</h3>
-      <!-- Se inyectarán dinámicamente desde JS para no repetir HTML -->
-    </div>
+    <h1>
+        Concept Documentation
+    </h1>
 
-    <!-- Evidencia Visual -->
-    <div class="form-card">
-      <h3>3. Evidencia Visual</h3>
-      <div class="drop-zone" id="drop-zone">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--verde-esmeralda)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
-        <p>Arrastra imágenes aquí, pégalas (Ctrl+V) o haz clic para subir</p>
-        <input type="file" id="file-input" accept="image/*" multiple style="display:none" />
-      </div>
-      <div class="gallery" id="gallery"></div>
+    <p>
+        Editor estructurado para documentación de conceptos.
+    </p>
+
+</header>
+
+
+<div class="layout">
+
+
+<!-- =========================================================
+     EDITOR
+========================================================= -->
+
+<div class="panel">
+
+<div class="panel-header">
+    Document Information
+</div>
+
+
+<div class="form">
+
+
+<div class="metadata">
+
+    <div>
+        document_type:
+        ConceptDocumentation
     </div>
 
-    <!-- Acciones -->
-    <div class="actions">
-      <button class="submit-btn" id="generate-btn">Generar Documento Markdown</button>
+    <div>
+        document_stage:
+        proposal
     </div>
 
-  </main>
+    <div id="generatedCode">
+        document_code: —
+    </div>
 
-  <script type="module" src="concept_doc.js"></script>
+    <div id="generatedUUID">
+        document_id: —
+    </div>
+
+    <div>
+        creation_date:
+        generated on creation
+    </div>
+
+</div>
+
+
+<!-- AUTHOR -->
+
+<div class="field" data-required="true">
+
+<label for="authorId">
+
+    ID de la persona
+
+    <span class="required">*</span>
+
+</label>
+
+<input
+    id="authorId"
+    type="text"
+    placeholder="Ej. 1212121212"
+>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- TITLE -->
+
+<div class="field" data-required="true">
+
+<label for="title">
+
+    Nombre de la idea
+
+    <span class="required">*</span>
+
+</label>
+
+<input
+    id="title"
+    type="text"
+    placeholder="Ej. Dummy data generator"
+>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- SUMMARY -->
+
+<div
+    class="field"
+    data-required="true"
+    data-editor-field="summary"
+>
+
+<label>
+
+    Resumen
+
+    <span class="required">*</span>
+
+</label>
+
+<div class="editor">
+
+<div
+    class="toolbar"
+    data-editor="summary"
+></div>
+
+<div
+    id="summary"
+    class="content-editor"
+    contenteditable="true"
+    data-placeholder="Describe brevemente la idea..."
+></div>
+
+</div>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- DESCRIPTION -->
+
+<div
+    class="field"
+    data-required="true"
+    data-editor-field="description"
+>
+
+<label>
+
+    Descripción General
+
+    <span class="required">*</span>
+
+</label>
+
+<div class="editor">
+
+<div
+    class="toolbar"
+    data-editor="description"
+></div>
+
+<div
+    id="description"
+    class="content-editor"
+    contenteditable="true"
+    data-placeholder="Describe la idea con mayor detalle..."
+></div>
+
+</div>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- OPERATION -->
+
+<div
+    class="field"
+    data-required="true"
+    data-editor-field="operation"
+>
+
+<label>
+
+    Funcionamiento Esperado
+
+    <span class="required">*</span>
+
+</label>
+
+<div class="editor">
+
+<div
+    class="toolbar"
+    data-editor="operation"
+></div>
+
+<div
+    id="operation"
+    class="content-editor"
+    contenteditable="true"
+    data-placeholder="Describe cómo debería funcionar..."
+></div>
+
+</div>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- TECHNOLOGIES -->
+
+<div
+    class="field"
+    data-required="true"
+    data-editor-field="technologies"
+>
+
+<label>
+
+    Tecnologías Posibles
+
+    <span class="required">*</span>
+
+</label>
+
+<div class="editor">
+
+<div
+    class="toolbar"
+    data-editor="technologies"
+></div>
+
+<div
+    id="technologies"
+    class="content-editor"
+    contenteditable="true"
+    data-placeholder="Tecnologías, metodologías, herramientas, etc..."
+></div>
+
+</div>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- PRINCIPLES -->
+
+<div
+    class="field"
+    data-required="true"
+    data-editor-field="principles"
+>
+
+<label>
+
+    Fundamentos o Principios
+
+    <span class="required">*</span>
+
+</label>
+
+<div class="editor">
+
+<div
+    class="toolbar"
+    data-editor="principles"
+></div>
+
+<div
+    id="principles"
+    class="content-editor"
+    contenteditable="true"
+    data-placeholder="Conceptos físicos, matemáticos, electrónicos, mecánicos, químicos, etc..."
+></div>
+
+</div>
+
+<div class="validation-message">
+    Este campo es obligatorio.
+</div>
+
+</div>
+
+
+<!-- =========================================================
+     EVIDENCE
+========================================================= -->
+
+<div
+    class="field"
+    data-required="true"
+    id="evidenceField"
+>
+
+<label>
+
+    Evidencia Visual
+
+    <span class="required">*</span>
+
+</label>
+
+
+<div
+    id="imageZone"
+    class="image-zone"
+>
+
+<p>
+
+    Pega imágenes con
+    <b>Ctrl + V</b>,
+
+    arrástralas aquí
+
+    o súbelas.
+
+</p>
+
+
+<div class="image-actions">
+
+<button
+    id="uploadButton"
+    type="button"
+>
+    📁 Subir imágenes
+</button>
+
+<button
+    id="clearImages"
+    type="button"
+>
+    🗑 Limpiar imágenes
+</button>
+
+</div>
+
+
+<input
+    id="imageInput"
+    type="file"
+    accept="image/*"
+    multiple
+    hidden
+>
+
+
+<div
+    id="images"
+    class="images"
+></div>
+
+
+</div>
+
+<div class="validation-message">
+    Debes agregar al menos una imagen.
+</div>
+
+</div>
+
+
+<!-- OBSERVATIONS -->
+
+<div class="field">
+
+<label>
+    Observaciones
+</label>
+
+<div class="editor">
+
+<div
+    class="toolbar"
+    data-editor="observations"
+></div>
+
+<div
+    id="observations"
+    class="content-editor"
+    contenteditable="true"
+    data-placeholder="Información adicional... (opcional)"
+></div>
+
+</div>
+
+</div>
+
+
+<!-- ACTIONS -->
+
+<div class="actions">
+
+<button
+    class="secondary"
+    id="clearAll"
+    type="button"
+>
+    Limpiar
+</button>
+
+
+<button
+    class="primary"
+    id="createDocument"
+    type="button"
+>
+    Crear documento
+</button>
+
+</div>
+
+
+</div>
+</div>
+
+
+<!-- =========================================================
+     PREVIEW
+========================================================= -->
+
+<div class="panel">
+
+<div class="panel-header">
+    Vista previa
+</div>
+
+
+<div
+    id="preview"
+    class="preview"
+>
+
+<h1>
+    Concept Documentation
+</h1>
+
+<p>
+    La vista previa aparecerá aquí.
+</p>
+
+</div>
+
+</div>
+
+
+</div>
+</div>
+
+
+<!-- =========================================================
+     LINK DIALOG
+========================================================= -->
+
+<dialog id="linkDialog">
+
+<div class="dialog-content">
+
+<h3>
+    Insertar enlace
+</h3>
+
+
+<label for="linkName">
+    Texto del enlace
+</label>
+
+<input
+    id="linkName"
+    type="text"
+    placeholder="Nombre del enlace"
+>
+
+
+<label for="linkURL">
+    URL
+</label>
+
+<input
+    id="linkURL"
+    type="url"
+    placeholder="https://ejemplo.com"
+>
+
+
+<div class="dialog-actions">
+
+<button
+    class="secondary"
+    id="cancelLink"
+    type="button"
+>
+    Cancelar
+</button>
+
+
+<button
+    class="primary"
+    id="insertLink"
+    type="button"
+>
+    Insertar
+</button>
+
+</div>
+
+</div>
+
+</dialog>
+
+
+<script>
+
+/* ============================================================
+   STATE
+============================================================ */
+
+const state = {
+
+    images: [],
+
+    savedRange: null,
+
+    activeEditor: null
+
+};
+
+
+/* ============================================================
+   TOOLBAR DEFINITIONS
+============================================================ */
+
+const formatButtons = [
+
+    {
+        label: "Normal",
+        command: "formatBlock",
+        value: "p",
+        className: "normal-button",
+        format: "normal"
+    },
+
+    {
+        label: "H2",
+        command: "formatBlock",
+        value: "h2",
+        format: "h2"
+    },
+
+    {
+        label: "H3",
+        command: "formatBlock",
+        value: "h3",
+        format: "h3"
+    },
+
+    {
+        label: "H4",
+        command: "formatBlock",
+        value: "h4",
+        format: "h4"
+    },
+
+    {
+        label: "H5",
+        command: "formatBlock",
+        value: "h5",
+        format: "h5"
+    },
+
+    {
+        label: "H6",
+        command: "formatBlock",
+        value: "h6",
+        format: "h6"
+    },
+
+    {
+        label: "B",
+        command: "bold",
+        format: "bold"
+    },
+
+    {
+        label: "I",
+        command: "italic",
+        format: "italic"
+    },
+
+    {
+        label: "•",
+        command: "insertUnorderedList",
+        format: "ul"
+    },
+
+    {
+        label: "1.",
+        command: "insertOrderedList",
+        format: "ol"
+    },
+
+    {
+        label: "↶",
+        command: "undo"
+    },
+
+    {
+        label: "↷",
+        command: "redo"
+    }
+
+];
+
+
+/* ============================================================
+   CREATE TOOLBARS
+============================================================ */
+
+document.querySelectorAll(".toolbar")
+.forEach(toolbar => {
+
+    const formatGroup =
+        document.createElement("div");
+
+    formatGroup.className =
+        "toolbar-group";
+
+
+    formatButtons
+        .filter(
+            button =>
+                button.format
+        )
+        .forEach(data => {
+
+            formatGroup.appendChild(
+                createToolbarButton(
+                    data,
+                    toolbar
+                )
+            );
+
+        });
+
+
+    toolbar.appendChild(
+        formatGroup
+    );
+
+
+    const commandGroup =
+        document.createElement("div");
+
+    commandGroup.className =
+        "toolbar-group";
+
+
+    formatButtons
+        .filter(
+            button =>
+                !button.format
+        )
+        .forEach(data => {
+
+            commandGroup.appendChild(
+                createToolbarButton(
+                    data,
+                    toolbar
+                )
+            );
+
+        });
+
+
+    const linkButton =
+        document.createElement(
+            "button"
+        );
+
+
+    linkButton.type =
+        "button";
+
+
+    linkButton.textContent =
+        "🔗";
+
+
+    linkButton.title =
+        "Insertar enlace (Ctrl+K)";
+
+
+    linkButton.addEventListener(
+        "mousedown",
+        event => {
+
+            event.preventDefault();
+
+            openLinkDialog(
+                toolbar
+            );
+
+        }
+    );
+
+
+    commandGroup.appendChild(
+        linkButton
+    );
+
+
+    toolbar.appendChild(
+        commandGroup
+    );
+
+});
+
+
+/* ============================================================
+   CREATE TOOLBAR BUTTON
+============================================================ */
+
+function createToolbarButton(
+    data,
+    toolbar
+) {
+
+    const button =
+        document.createElement(
+            "button"
+        );
+
+
+    button.type =
+        "button";
+
+
+    button.textContent =
+        data.label;
+
+
+    button.dataset.format =
+        data.format || "";
+
+
+    button.title =
+        data.format ||
+        data.command;
+
+
+    if (data.className) {
+
+        button.classList.add(
+            data.className
+        );
+
+    }
+
+
+    button.addEventListener(
+        "mousedown",
+        event => {
+
+            event.preventDefault();
+
+
+            const editor =
+                document.getElementById(
+                    toolbar.dataset.editor
+                );
+
+
+            state.activeEditor =
+                editor;
+
+
+            editor.focus();
+
+
+            document.execCommand(
+                data.command,
+                false,
+                data.value || null
+            );
+
+
+            updateToolbarState(
+                editor
+            );
+
+
+            updatePreview();
+
+        }
+    );
+
+
+    return button;
+
+}
+
+
+/* ============================================================
+   EDITOR EVENTS
+============================================================ */
+
+document.querySelectorAll(
+    ".content-editor"
+)
+.forEach(editor => {
+
+    editor.addEventListener(
+        "focus",
+        () => {
+
+            state.activeEditor =
+                editor;
+
+            updateToolbarState(
+                editor
+            );
+
+        }
+    );
+
+
+    editor.addEventListener(
+        "keyup",
+        () => {
+
+            updateToolbarState(
+                editor
+            );
+
+            updatePreview();
+
+        }
+    );
+
+
+    editor.addEventListener(
+        "mouseup",
+        () => {
+
+            updateToolbarState(
+                editor
+            );
+
+        }
+    );
+
+
+    editor.addEventListener(
+        "input",
+        () => {
+
+            state.activeEditor =
+                editor;
+
+
+            updateToolbarState(
+                editor
+            );
+
+
+            updatePreview();
+
+
+            const field =
+                editor.closest(
+                    ".field"
+                );
+
+
+            if (
+                editor.innerText.trim()
+            ) {
+
+                field.classList.remove(
+                    "invalid"
+                );
+
+            }
+
+        }
+    );
+
+});
+
+
+/* ============================================================
+   TOOLBAR STATE
+============================================================ */
+
+document.addEventListener(
+    "selectionchange",
+    () => {
+
+        if (!state.activeEditor) {
+            return;
+        }
+
+
+        const selection =
+            window.getSelection();
+
+
+        if (!selection.rangeCount) {
+            return;
+        }
+
+
+        const node =
+            selection.anchorNode;
+
+
+        if (!node) {
+            return;
+        }
+
+
+        if (
+            state.activeEditor.contains(
+                node
+            )
+        ) {
+
+            updateToolbarState(
+                state.activeEditor
+            );
+
+        }
+
+    }
+);
+
+
+function updateToolbarState(
+    editor
+) {
+
+    if (!editor) {
+        return;
+    }
+
+
+    const toolbar =
+        document.querySelector(
+            `.toolbar[data-editor="${editor.id}"]`
+        );
+
+
+    if (!toolbar) {
+        return;
+    }
+
+
+    toolbar
+        .querySelectorAll("button")
+        .forEach(
+            button => {
+
+                button.classList.remove(
+                    "active"
+                );
+
+            }
+        );
+
+
+    let block =
+        getCurrentBlock();
+
+
+    if (
+        !block ||
+        !editor.contains(block)
+    ) {
+
+        block =
+            editor;
+
+    }
+
+
+    const tag =
+        block.tagName?.toLowerCase();
+
+
+    let format =
+        "normal";
+
+
+    if (
+        [
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6"
+        ].includes(tag)
+    ) {
+
+        format =
+            tag;
+
+    }
+
+
+    const formatButton =
+        toolbar.querySelector(
+            `button[data-format="${format}"]`
+        );
+
+
+    if (formatButton) {
+
+        formatButton.classList.add(
+            "active"
+        );
+
+    }
+
+
+    try {
+
+        if (
+            document.queryCommandState(
+                "bold"
+            )
+        ) {
+
+            activateFormat(
+                toolbar,
+                "bold"
+            );
+
+        }
+
+
+        if (
+            document.queryCommandState(
+                "italic"
+            )
+        ) {
+
+            activateFormat(
+                toolbar,
+                "italic"
+            );
+
+        }
+
+
+        if (
+            document.queryCommandState(
+                "insertUnorderedList"
+            )
+        ) {
+
+            activateFormat(
+                toolbar,
+                "ul"
+            );
+
+        }
+
+
+        if (
+            document.queryCommandState(
+                "insertOrderedList"
+            )
+        ) {
+
+            activateFormat(
+                toolbar,
+                "ol"
+            );
+
+        }
+
+    } catch (error) {
+
+        /*
+         * Some browsers can throw here when
+         * the editor is not currently focused.
+         */
+
+    }
+
+}
+
+
+function activateFormat(
+    toolbar,
+    format
+) {
+
+    const button =
+        toolbar.querySelector(
+            `button[data-format="${format}"]`
+        );
+
+
+    if (button) {
+
+        button.classList.add(
+            "active"
+        );
+
+    }
+
+}
+
+
+function getCurrentBlock() {
+
+    const selection =
+        window.getSelection();
+
+
+    if (!selection.rangeCount) {
+        return null;
+    }
+
+
+    let node =
+        selection.anchorNode;
+
+
+    if (
+        node &&
+        node.nodeType ===
+        Node.TEXT_NODE
+    ) {
+
+        node =
+            node.parentElement;
+
+    }
+
+
+    while (
+        node &&
+        node !== document.body
+    ) {
+
+        const tag =
+            node.tagName?.toLowerCase();
+
+
+        if (
+            [
+                "p",
+                "div",
+                "h2",
+                "h3",
+                "h4",
+                "h5",
+                "h6",
+                "li"
+            ].includes(tag)
+        ) {
+
+            return node;
+
+        }
+
+
+        node =
+            node.parentElement;
+
+    }
+
+
+    return null;
+
+}
+
+
+/* ============================================================
+   LINK DIALOG
+============================================================ */
+
+function openLinkDialog(
+    toolbar
+) {
+
+    const editor =
+        document.getElementById(
+            toolbar.dataset.editor
+        );
+
+
+    state.activeEditor =
+        editor;
+
+
+    editor.focus();
+
+
+    const selection =
+        window.getSelection();
+
+
+    if (
+        selection.rangeCount
+    ) {
+
+        state.savedRange =
+            selection
+                .getRangeAt(0)
+                .cloneRange();
+
+    } else {
+
+        state.savedRange =
+            null;
+
+    }
+
+
+    document.getElementById(
+        "linkName"
+    ).value =
+        selection.toString();
+
+
+    document.getElementById(
+        "linkURL"
+    ).value =
+        "";
+
+
+    document.getElementById(
+        "linkDialog"
+    ).showModal();
+
+
+    setTimeout(
+        () => {
+
+            document.getElementById(
+                "linkName"
+            ).focus();
+
+        },
+        50
+    );
+
+}
+
+
+/* ============================================================
+   CANCEL LINK
+============================================================ */
+
+document.getElementById(
+    "cancelLink"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        state.savedRange =
+            null;
+
+        document.getElementById(
+            "linkDialog"
+        ).close();
+
+    }
+);
+
+
+/* ============================================================
+   INSERT LINK
+============================================================ */
+
+document.getElementById(
+    "insertLink"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        const name =
+            document.getElementById(
+                "linkName"
+            ).value.trim();
+
+
+        let url =
+            document.getElementById(
+                "linkURL"
+            ).value.trim();
+
+
+        if (!name) {
+
+            alert(
+                "Introduce el texto del enlace."
+            );
+
+            return;
+
+        }
+
+
+        if (!url) {
+
+            alert(
+                "Introduce la URL."
+            );
+
+            return;
+
+        }
+
+
+        if (
+            !/^https?:\/\//i.test(url) &&
+            !/^mailto:/i.test(url)
+        ) {
+
+            url =
+                "https://" + url;
+
+        }
+
+
+        const editor =
+            state.activeEditor;
+
+
+        const range =
+            state.savedRange;
+
+
+        if (
+            !editor ||
+            !range
+        ) {
+
+            alert(
+                "No se pudo recuperar la selección."
+            );
+
+            return;
+
+        }
+
+
+        if (
+            !editor.contains(
+                range.commonAncestorContainer
+            )
+        ) {
+
+            alert(
+                "La selección ya no pertenece al editor."
+            );
+
+            state.savedRange =
+                null;
+
+            return;
+
+        }
+
+
+        const anchor =
+            document.createElement(
+                "a"
+            );
+
+
+        anchor.href =
+            url;
+
+
+        anchor.target =
+            "_blank";
+
+
+        anchor.rel =
+            "noopener noreferrer";
+
+
+        if (
+            !range.collapsed
+        ) {
+
+            const fragment =
+                range.extractContents();
+
+
+            anchor.appendChild(
+                fragment
+            );
+
+
+            if (
+                !anchor.textContent.trim()
+            ) {
+
+                anchor.textContent =
+                    name;
+
+            }
+
+
+            range.insertNode(
+                anchor
+            );
+
+        } else {
+
+            anchor.textContent =
+                name;
+
+
+            range.insertNode(
+                anchor
+            );
+
+        }
+
+
+        const newRange =
+            document.createRange();
+
+
+        newRange.setStartAfter(
+            anchor
+        );
+
+
+        newRange.collapse(
+            true
+        );
+
+
+        const selection =
+            window.getSelection();
+
+
+        selection.removeAllRanges();
+
+
+        selection.addRange(
+            newRange
+        );
+
+
+        state.savedRange =
+            null;
+
+
+        document.getElementById(
+            "linkDialog"
+        ).close();
+
+
+        editor.focus();
+
+
+        updateToolbarState(
+            editor
+        );
+
+
+        updatePreview();
+
+    }
+);
+
+
+/* ============================================================
+   CTRL + K
+============================================================ */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            (event.ctrlKey ||
+             event.metaKey) &&
+            event.key.toLowerCase() ===
+            "k"
+        ) {
+
+            if (
+                !state.activeEditor
+            ) {
+
+                return;
+
+            }
+
+
+            event.preventDefault();
+
+
+            const toolbar =
+                document.querySelector(
+                    `.toolbar[data-editor="${state.activeEditor.id}"]`
+                );
+
+
+            if (toolbar) {
+
+                openLinkDialog(
+                    toolbar
+                );
+
+            }
+
+        }
+
+    }
+);
+
+
+/* ============================================================
+   TITLE / AUTHOR
+============================================================ */
+
+document.getElementById(
+    "title"
+)
+.addEventListener(
+    "input",
+    event => {
+
+        const field =
+            event.target.closest(
+                ".field"
+            );
+
+
+        if (
+            event.target.value.trim()
+        ) {
+
+            field.classList.remove(
+                "invalid"
+            );
+
+        }
+
+
+        updatePreview();
+
+    }
+);
+
+
+document.getElementById(
+    "authorId"
+)
+.addEventListener(
+    "input",
+    event => {
+
+        const field =
+            event.target.closest(
+                ".field"
+            );
+
+
+        if (
+            event.target.value.trim()
+        ) {
+
+            field.classList.remove(
+                "invalid"
+            );
+
+        }
+
+    }
+);
+
+
+/* ============================================================
+   IMAGE ELEMENTS
+============================================================ */
+
+const imageZone =
+    document.getElementById(
+        "imageZone"
+    );
+
+
+const imageInput =
+    document.getElementById(
+        "imageInput"
+    );
+
+
+const imagesContainer =
+    document.getElementById(
+        "images"
+    );
+
+
+/* ============================================================
+   UPLOAD
+============================================================ */
+
+document.getElementById(
+    "uploadButton"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        imageInput.click();
+
+    }
+);
+
+
+imageInput.addEventListener(
+    "change",
+    event => {
+
+        [
+            ...event.target.files
+        ]
+        .filter(
+            file =>
+                file.type.startsWith(
+                    "image/"
+                )
+        )
+        .forEach(
+            addImage
+        );
+
+
+        imageInput.value =
+            "";
+
+    }
+);
+
+
+/* ============================================================
+   DRAG & DROP
+============================================================ */
+
+imageZone.addEventListener(
+    "dragover",
+    event => {
+
+        event.preventDefault();
+
+        imageZone.classList.add(
+            "dragging"
+        );
+
+    }
+);
+
+
+imageZone.addEventListener(
+    "dragleave",
+    event => {
+
+        /*
+         * Only remove dragging when leaving
+         * the actual image zone.
+         */
+
+        if (
+            event.target === imageZone
+        ) {
+
+            imageZone.classList.remove(
+                "dragging"
+            );
+
+        }
+
+    }
+);
+
+
+imageZone.addEventListener(
+    "drop",
+    event => {
+
+        event.preventDefault();
+
+        imageZone.classList.remove(
+            "dragging"
+        );
+
+
+        [
+            ...event.dataTransfer.files
+        ]
+        .filter(
+            file =>
+                file.type.startsWith(
+                    "image/"
+                )
+        )
+        .forEach(
+            addImage
+        );
+
+    }
+);
+
+
+/* ============================================================
+   GLOBAL IMAGE PASTE
+============================================================ */
+
+/*
+ * IMPORTANT:
+ *
+ * This listener intentionally lives on
+ * document instead of only imageZone.
+ *
+ * Therefore Ctrl+V works regardless of
+ * where the user currently has the cursor.
+ *
+ * HOWEVER:
+ *
+ * If the clipboard contains an image,
+ * preventDefault() is called.
+ *
+ * This stops the browser from inserting
+ * the image into a contenteditable.
+ *
+ * Text pastes are NOT intercepted.
+ */
+
+document.addEventListener(
+    "paste",
+    event => {
+
+        const clipboard =
+            event.clipboardData;
+
+
+        if (!clipboard) {
+            return;
+        }
+
+
+        const imageItems =
+            [
+                ...clipboard.items
+            ]
+            .filter(
+                item =>
+                    item.kind === "file" &&
+                    item.type.startsWith(
+                        "image/"
+                    )
+            );
+
+
+        /*
+         * Nothing to do if clipboard
+         * does not contain images.
+         *
+         * Normal text paste continues
+         * naturally.
+         */
+
+        if (
+            imageItems.length === 0
+        ) {
+
+            return;
+
+        }
+
+
+        /*
+         * THIS IS THE FIX.
+         *
+         * Prevent the browser from also
+         * inserting the image into the
+         * current contenteditable.
+         */
+
+        event.preventDefault();
+
+
+        /*
+         * Prevent possible nested/default
+         * browser behavior.
+         */
+
+        event.stopPropagation();
+
+
+        imageItems.forEach(
+            item => {
+
+                const file =
+                    item.getAsFile();
+
+
+                if (file) {
+
+                    addImage(
+                        file
+                    );
+
+                }
+
+            }
+        );
+
+    },
+    true
+);
+
+
+/* ============================================================
+   ADD IMAGE
+============================================================ */
+
+async function addImage(
+    file
+) {
+
+    if (
+        !file ||
+        !file.type.startsWith(
+            "image/"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const data =
+        await fileToDataURL(
+            file
+        );
+
+
+    const image = {
+
+        id:
+            nextImageId(),
+
+        data,
+
+        alt:
+            ""
+
+    };
+
+
+    state.images.push(
+        image
+    );
+
+
+    document.getElementById(
+        "evidenceField"
+    ).classList.remove(
+        "invalid"
+    );
+
+
+    renderImages();
+
+    updatePreview();
+
+}
+
+
+/* ============================================================
+   IMAGE ID
+============================================================ */
+
+function nextImageId() {
+
+    return (
+        "evidencia_" +
+        String(
+            state.images.length + 1
+        ).padStart(
+            3,
+            "0"
+        )
+    );
+
+}
+
+
+/* ============================================================
+   FILE → DATA URI
+============================================================ */
+
+function fileToDataURL(
+    file
+) {
+
+    return new Promise(
+        (resolve, reject) => {
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                () =>
+                    resolve(
+                        reader.result
+                    );
+
+
+            reader.onerror =
+                reject;
+
+
+            reader.readAsDataURL(
+                file
+            );
+
+        }
+    );
+
+}
+
+
+/* ============================================================
+   RENDER IMAGES
+============================================================ */
+
+function renderImages() {
+
+    imagesContainer.innerHTML =
+        "";
+
+
+    state.images.forEach(
+        (image, index) => {
+
+            const card =
+                document.createElement(
+                    "div"
+                );
+
+
+            card.className =
+                "image-card";
+
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+
+            img.src =
+                image.data;
+
+
+            img.alt =
+                image.alt;
+
+
+            card.appendChild(
+                img
+            );
+
+
+            const remove =
+                document.createElement(
+                    "button"
+                );
+
+
+            remove.type =
+                "button";
+
+
+            remove.className =
+                "remove-image";
+
+
+            remove.textContent =
+                "×";
+
+
+            remove.title =
+                "Eliminar imagen";
+
+
+            remove.addEventListener(
+                "click",
+                () => {
+
+                    state.images.splice(
+                        index,
+                        1
+                    );
+
+
+                    state.images.forEach(
+                        (item, i) => {
+
+                            item.id =
+                                "evidencia_" +
+                                String(
+                                    i + 1
+                                ).padStart(
+                                    3,
+                                    "0"
+                                );
+
+                        }
+                    );
+
+
+                    renderImages();
+
+                    updatePreview();
+
+                }
+            );
+
+
+            card.appendChild(
+                remove
+            );
+
+
+            const alt =
+                document.createElement(
+                    "input"
+                );
+
+
+            alt.type =
+                "text";
+
+
+            alt.placeholder =
+                "Texto alternativo (opcional)";
+
+
+            alt.value =
+                image.alt;
+
+
+            alt.addEventListener(
+                "input",
+                () => {
+
+                    image.alt =
+                        alt.value;
+
+
+                    img.alt =
+                        alt.value;
+
+
+                    updatePreview();
+
+                }
+            );
+
+
+            card.appendChild(
+                alt
+            );
+
+
+            imagesContainer.appendChild(
+                card
+            );
+
+        }
+    );
+
+}
+
+
+/* ============================================================
+   PREVIEW
+============================================================ */
+
+function updatePreview() {
+
+    const title =
+        document.getElementById(
+            "title"
+        ).value.trim()
+        ||
+        "Concept Documentation";
+
+
+    const preview =
+        document.getElementById(
+            "preview"
+        );
+
+
+    preview.innerHTML =
+        "";
+
+
+    const h1 =
+        document.createElement(
+            "h1"
+        );
+
+
+    h1.textContent =
+        title;
+
+
+    preview.appendChild(
+        h1
+    );
+
+
+    addPreviewSection(
+        preview,
+        "Resumen",
+        "summary"
+    );
+
+
+    addPreviewSection(
+        preview,
+        "Descripción General",
+        "description"
+    );
+
+
+    addPreviewSection(
+        preview,
+        "Funcionamiento Esperado",
+        "operation"
+    );
+
+
+    addPreviewSection(
+        preview,
+        "Tecnologías Posibles",
+        "technologies"
+    );
+
+
+    addPreviewSection(
+        preview,
+        "Fundamentos o Principios",
+        "principles"
+    );
+
+
+    const evidence =
+        document.createElement(
+            "section"
+        );
+
+
+    const evidenceTitle =
+        document.createElement(
+            "h2"
+        );
+
+
+    evidenceTitle.textContent =
+        "Evidencia Visual";
+
+
+    evidence.appendChild(
+        evidenceTitle
+    );
+
+
+    state.images.forEach(
+        image => {
+
+            const wrapper =
+                document.createElement(
+                    "div"
+                );
+
+
+            wrapper.className =
+                "evidence";
+
+
+            const img =
+                document.createElement(
+                    "img"
+                );
+
+
+            img.src =
+                image.data;
+
+
+            img.alt =
+                image.alt;
+
+
+            img.id =
+                image.id;
+
+
+            wrapper.appendChild(
+                img
+            );
+
+
+            evidence.appendChild(
+                wrapper
+            );
+
+        }
+    );
+
+
+    preview.appendChild(
+        evidence
+    );
+
+
+    addPreviewSection(
+        preview,
+        "Observaciones",
+        "observations"
+    );
+
+}
+
+
+/* ============================================================
+   PREVIEW SECTION
+============================================================ */
+
+function addPreviewSection(
+    preview,
+    title,
+    id
+) {
+
+    const section =
+        document.createElement(
+            "section"
+        );
+
+
+    const h2 =
+        document.createElement(
+            "h2"
+        );
+
+
+    h2.textContent =
+        title;
+
+
+    section.appendChild(
+        h2
+    );
+
+
+    const editor =
+        document.getElementById(
+            id
+        );
+
+
+    if (
+        editor.innerHTML.trim()
+    ) {
+
+        const body =
+            document.createElement(
+                "div"
+            );
+
+
+        body.innerHTML =
+            editor.innerHTML;
+
+
+        section.appendChild(
+            body
+        );
+
+    }
+
+
+    preview.appendChild(
+        section
+    );
+
+}
+
+
+/* ============================================================
+   UUID V4
+============================================================ */
+
+function generateUUIDv4() {
+
+    if (
+        crypto.randomUUID
+    ) {
+
+        return crypto.randomUUID();
+
+    }
+
+
+    const bytes =
+        new Uint8Array(
+            16
+        );
+
+
+    crypto.getRandomValues(
+        bytes
+    );
+
+
+    bytes[6] =
+        (bytes[6] & 0x0f)
+        | 0x40;
+
+
+    bytes[8] =
+        (bytes[8] & 0x3f)
+        | 0x80;
+
+
+    const hex =
+        [
+            ...bytes
+        ]
+        .map(
+            b =>
+                b.toString(16)
+                    .padStart(
+                        2,
+                        "0"
+                    )
+        )
+        .join("");
+
+
+    return (
+        hex.slice(0,8) +
+        "-" +
+        hex.slice(8,12) +
+        "-" +
+        hex.slice(12,16) +
+        "-" +
+        hex.slice(16,20) +
+        "-" +
+        hex.slice(20)
+    );
+
+}
+
+
+/* ============================================================
+   RANDOM CODE
+============================================================ */
+
+function randomCode(
+    length = 8
+) {
+
+    const chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+
+    const values =
+        new Uint32Array(
+            length
+        );
+
+
+    crypto.getRandomValues(
+        values
+    );
+
+
+    let result =
+        "";
+
+
+    for (
+        let i = 0;
+        i < length;
+        i++
+    ) {
+
+        result +=
+            chars[
+                values[i] %
+                chars.length
+            ];
+
+    }
+
+
+    return result;
+
+}
+
+
+/* ============================================================
+   DATE YYYYMMDD
+============================================================ */
+
+function getDateYYYYMMDD() {
+
+    const date =
+        new Date();
+
+
+    return (
+        date.getFullYear()
+        +
+        String(
+            date.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        )
+        +
+        String(
+            date.getDate()
+        ).padStart(
+            2,
+            "0"
+        )
+    );
+
+}
+
+
+/* ============================================================
+   HTML → MARKDOWN
+============================================================ */
+
+function htmlToMarkdown(
+    root
+) {
+
+    function convert(
+        node
+    ) {
+
+        if (
+            node.nodeType ===
+            Node.TEXT_NODE
+        ) {
+
+            return node.nodeValue
+                .replace(
+                    /\u00a0/g,
+                    " "
+                );
+
+        }
+
+
+        if (
+            node.nodeType !==
+            Node.ELEMENT_NODE
+        ) {
+
+            return "";
+
+        }
+
+
+        const tag =
+            node.tagName
+                .toLowerCase();
+
+
+        const content =
+            [
+                ...node.childNodes
+            ]
+            .map(
+                convert
+            )
+            .join("");
+
+
+        switch(tag) {
+
+            case "br":
+
+                return "\n";
+
+
+            case "strong":
+            case "b":
+
+                return (
+                    "**" +
+                    content.trim() +
+                    "**"
+                );
+
+
+            case "em":
+            case "i":
+
+                return (
+                    "*" +
+                    content.trim() +
+                    "*"
+                );
+
+
+            case "h2":
+
+                return (
+                    "\n## " +
+                    content.trim() +
+                    "\n"
+                );
+
+
+            case "h3":
+
+                return (
+                    "\n### " +
+                    content.trim() +
+                    "\n"
+                );
+
+
+            case "h4":
+
+                return (
+                    "\n#### " +
+                    content.trim() +
+                    "\n"
+                );
+
+
+            case "h5":
+
+                return (
+                    "\n##### " +
+                    content.trim() +
+                    "\n"
+                );
+
+
+            case "h6":
+
+                return (
+                    "\n###### " +
+                    content.trim() +
+                    "\n"
+                );
+
+
+            case "a": {
+
+                const href =
+                    node.getAttribute(
+                        "href"
+                    ) || "";
+
+
+                return (
+                    "[" +
+                    content.trim() +
+                    "](" +
+                    href +
+                    ")"
+                );
+
+            }
+
+
+            case "ul":
+
+                return (
+                    "\n" +
+                    [
+                        ...node.children
+                    ]
+                    .map(
+                        li =>
+                            "- " +
+                            convert(
+                                li
+                            ).trim()
+                    )
+                    .join("\n") +
+                    "\n"
+                );
+
+
+            case "ol":
+
+                return (
+                    "\n" +
+                    [
+                        ...node.children
+                    ]
+                    .map(
+                        (li, index) =>
+                            `${index + 1}. ` +
+                            convert(
+                                li
+                            ).trim()
+                    )
+                    .join("\n") +
+                    "\n"
+                );
+
+
+            case "li":
+
+                return content;
+
+
+            case "p":
+
+                return (
+                    "\n" +
+                    content.trim() +
+                    "\n"
+                );
+
+
+            case "div":
+
+                return (
+                    content +
+                    "\n"
+                );
+
+
+            default:
+
+                return content;
+
+        }
+
+    }
+
+
+    return convert(root)
+
+        .replace(
+            /\n{3,}/g,
+            "\n\n"
+        )
+
+        .trim();
+
+}
+
+
+/* ============================================================
+   ESCAPE ATTRIBUTE
+============================================================ */
+
+function escapeHtmlAttribute(
+    value
+) {
+
+    return String(
+        value || ""
+    )
+    .replace(
+        /&/g,
+        "&amp;"
+    )
+    .replace(
+        /'/g,
+        "&#39;"
+    )
+    .replace(
+        /"/g,
+        "&quot;"
+    )
+    .replace(
+        /</g,
+        "&lt;"
+    )
+    .replace(
+        />/g,
+        "&gt;"
+    );
+
+}
+
+
+/* ============================================================
+   YAML STRING
+============================================================ */
+
+function yamlString(
+    value
+) {
+
+    return JSON.stringify(
+        value || ""
+    );
+
+}
+
+
+/* ============================================================
+   VALIDATION
+============================================================ */
+
+function validateRequiredFields() {
+
+    let valid =
+        true;
+
+
+    const author =
+        document.getElementById(
+            "authorId"
+        );
+
+
+    const title =
+        document.getElementById(
+            "title"
+        );
+
+
+    const authorField =
+        author.closest(
+            ".field"
+        );
+
+
+    const titleField =
+        title.closest(
+            ".field"
+        );
+
+
+    authorField.classList.remove(
+        "invalid"
+    );
+
+
+    titleField.classList.remove(
+        "invalid"
+    );
+
+
+    if (
+        !author.value.trim()
+    ) {
+
+        authorField.classList.add(
+            "invalid"
+        );
+
+        valid =
+            false;
+
+    }
+
+
+    if (
+        !title.value.trim()
+    ) {
+
+        titleField.classList.add(
+            "invalid"
+        );
+
+        valid =
+            false;
+
+    }
+
+
+    document.querySelectorAll(
+        ".field[data-editor-field]"
+    )
+    .forEach(
+        field => {
+
+            const editor =
+                document.getElementById(
+                    field.dataset.editorField
+                );
+
+
+            field.classList.remove(
+                "invalid"
+            );
+
+
+            if (
+                !editor.innerText.trim()
+            ) {
+
+                field.classList.add(
+                    "invalid"
+                );
+
+                valid =
+                    false;
+
+            }
+
+        }
+    );
+
+
+    const evidenceField =
+        document.getElementById(
+            "evidenceField"
+        );
+
+
+    evidenceField.classList.remove(
+        "invalid"
+    );
+
+
+    if (
+        state.images.length === 0
+    ) {
+
+        evidenceField.classList.add(
+            "invalid"
+        );
+
+        valid =
+            false;
+
+    }
+
+
+    return valid;
+
+}
+
+
+/* ============================================================
+   GENERATE MARKDOWN
+============================================================ */
+
+function generateMarkdown() {
+
+    if (
+        !validateRequiredFields()
+    ) {
+
+        const firstInvalid =
+            document.querySelector(
+                ".field.invalid"
+            );
+
+
+        if (firstInvalid) {
+
+            firstInvalid.scrollIntoView(
+                {
+                    behavior:
+                        "smooth",
+
+                    block:
+                        "center"
+                }
+            );
+
+        }
+
+
+        alert(
+            "Completa todos los campos obligatorios antes de crear el documento."
+        );
+
+
+        return null;
+
+    }
+
+
+    const authorId =
+        document.getElementById(
+            "authorId"
+        ).value.trim();
+
+
+    const title =
+        document.getElementById(
+            "title"
+        ).value.trim();
+
+
+    const date =
+        getDateYYYYMMDD();
+
+
+    const random =
+        randomCode(
+            8
+        );
+
+
+    const documentCode =
+        `${date}_${random}_ConceptDocumentation`;
+
+
+    const documentId =
+        generateUUIDv4();
+
+
+    document.getElementById(
+        "generatedCode"
+    ).textContent =
+        "document_code: " +
+        documentCode;
+
+
+    document.getElementById(
+        "generatedUUID"
+    ).textContent =
+        "document_id: " +
+        documentId;
+
+
+    const summary =
+        htmlToMarkdown(
+            document.getElementById(
+                "summary"
+            )
+        );
+
+
+    const description =
+        htmlToMarkdown(
+            document.getElementById(
+                "description"
+            )
+        );
+
+
+    const operation =
+        htmlToMarkdown(
+            document.getElementById(
+                "operation"
+            )
+        );
+
+
+    const technologies =
+        htmlToMarkdown(
+            document.getElementById(
+                "technologies"
+            )
+        );
+
+
+    const principles =
+        htmlToMarkdown(
+            document.getElementById(
+                "principles"
+            )
+        );
+
+
+    const observations =
+        htmlToMarkdown(
+            document.getElementById(
+                "observations"
+            )
+        );
+
+
+    let markdown =
+`---
+document_type: ConceptDocumentation
+document_stage: proposal
+
+document_code: ${documentCode}
+document_id: ${documentId}
+
+author_id: ${yamlString(authorId)}
+creation_date: ${date}
+title: ${yamlString(title)}
+---
+
+# Resumen
+
+${summary}
+
+# Descripción General
+
+${description}
+
+# Funcionamiento Esperado
+
+${operation}
+
+# Tecnologías Posibles
+
+${technologies}
+
+# Fundamentos o Principios
+
+${principles}
+
+# Evidencia Visual
+
+`;
+
+
+    state.images.forEach(
+        image => {
+
+            markdown +=
+`
+<p align='center' id='${image.id}'>
+    <img
+        id='${image.id}'
+        alt='${escapeHtmlAttribute(image.alt)}'
+        src='${image.data}'
+    >
+</p>
+
+`;
+
+        }
+    );
+
+
+    markdown +=
+`
+# Observaciones
+
+${observations}
+`;
+
+
+    return {
+
+        markdown,
+
+        filename:
+            `${documentCode}.md`
+
+    };
+
+}
+
+
+/* ============================================================
+   CREATE DOCUMENT
+============================================================ */
+
+document.getElementById(
+    "createDocument"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        const result =
+            generateMarkdown();
+
+
+        if (!result) {
+            return;
+        }
+
+
+        const blob =
+            new Blob(
+                [
+                    result.markdown
+                ],
+                {
+                    type:
+                        "text/markdown;charset=utf-8"
+                }
+            );
+
+
+        const url =
+            URL.createObjectURL(
+                blob
+            );
+
+
+        const anchor =
+            document.createElement(
+                "a"
+            );
+
+
+        anchor.href =
+            url;
+
+
+        anchor.download =
+            result.filename;
+
+
+        document.body.appendChild(
+            anchor
+        );
+
+
+        anchor.click();
+
+
+        anchor.remove();
+
+
+        URL.revokeObjectURL(
+            url
+        );
+
+
+        alert(
+            "Documento creado correctamente:\n\n" +
+            result.filename
+        );
+
+    }
+);
+
+
+/* ============================================================
+   CLEAR IMAGES
+============================================================ */
+
+document.getElementById(
+    "clearImages"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        if (
+            !state.images.length
+        ) {
+
+            return;
+
+        }
+
+
+        if (
+            !confirm(
+                "¿Eliminar todas las imágenes?"
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        state.images = [];
+
+
+        renderImages();
+
+        updatePreview();
+
+    }
+);
+
+
+/* ============================================================
+   CLEAR ALL
+============================================================ */
+
+document.getElementById(
+    "clearAll"
+)
+.addEventListener(
+    "click",
+    () => {
+
+        if (
+            !confirm(
+                "¿Seguro que quieres limpiar todo el documento?"
+            )
+        ) {
+
+            return;
+
+        }
+
+
+        document.getElementById(
+            "authorId"
+        ).value =
+            "";
+
+
+        document.getElementById(
+            "title"
+        ).value =
+            "";
+
+
+        document.querySelectorAll(
+            ".content-editor"
+        )
+        .forEach(
+            editor => {
+
+                editor.innerHTML =
+                    "";
+
+            }
+        );
+
+
+        document.querySelectorAll(
+            ".field.invalid"
+        )
+        .forEach(
+            field => {
+
+                field.classList.remove(
+                    "invalid"
+                );
+
+            }
+        );
+
+
+        state.images = [];
+
+        state.activeEditor =
+            null;
+
+        state.savedRange =
+            null;
+
+
+        renderImages();
+
+
+        document.getElementById(
+            "generatedCode"
+        ).textContent =
+            "document_code: —";
+
+
+        document.getElementById(
+            "generatedUUID"
+        ).textContent =
+            "document_id: —";
+
+
+        updatePreview();
+
+    }
+);
+
+
+/* ============================================================
+   INITIALIZE
+============================================================ */
+
+updatePreview();
+
+</script>
+
 </body>
 </html>
