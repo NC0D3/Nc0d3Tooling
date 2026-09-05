@@ -22,6 +22,7 @@ const clearFormatButton = document.getElementById("clearFormatButton");
 let savedRange = null;
 
 function saveSelection() {
+
     const selection = window.getSelection();
 
     if (!selection || !selection.rangeCount) {
@@ -36,35 +37,45 @@ function saveSelection() {
 }
 
 function restoreSelection() {
+
     if (!savedRange) {
         return false;
     }
 
     try {
+
         const selection = window.getSelection();
 
         selection.removeAllRanges();
         selection.addRange(savedRange);
 
         return true;
+
     } catch (error) {
+
         savedRange = null;
+
         return false;
     }
 }
 
 editor.addEventListener("mouseup", () => {
+
     saveSelection();
     updateToolbarState();
+
 });
 
 editor.addEventListener("keyup", () => {
+
     saveSelection();
     updateToolbarState();
     updateStatus();
+
 });
 
 document.addEventListener("selectionchange", () => {
+
     const selection = window.getSelection();
 
     if (!selection || !selection.rangeCount) {
@@ -74,7 +85,9 @@ document.addEventListener("selectionchange", () => {
     const range = selection.getRangeAt(0);
 
     if (editor.contains(range.commonAncestorContainer)) {
+
         savedRange = range.cloneRange();
+
         updateToolbarState();
     }
 });
@@ -85,6 +98,7 @@ document.addEventListener("selectionchange", () => {
    ============================================================ */
 
 function getCurrentNode() {
+
     const selection = window.getSelection();
 
     if (!selection || !selection.rangeCount) {
@@ -105,6 +119,7 @@ function getCurrentNode() {
 }
 
 function closestElement(selector) {
+
     const node = getCurrentNode();
 
     if (!node) {
@@ -127,6 +142,7 @@ const EXCLUSIVE_INLINE_SELECTOR =
     "strong,b,em,i,u,s,strike,del,code.inline-code";
 
 function isExclusiveInlineElement(element) {
+
     if (
         !element ||
         element.nodeType !== Node.ELEMENT_NODE
@@ -156,6 +172,7 @@ function isExclusiveInlineElement(element) {
 }
 
 function unwrapInlineElement(element) {
+
     if (!element || !element.parentNode) {
         return;
     }
@@ -163,6 +180,7 @@ function unwrapInlineElement(element) {
     const parent = element.parentNode;
 
     while (element.firstChild) {
+
         parent.insertBefore(
             element.firstChild,
             element
@@ -173,6 +191,7 @@ function unwrapInlineElement(element) {
 }
 
 function unwrapExclusiveFormats(root) {
+
     if (!root) {
         return;
     }
@@ -188,10 +207,89 @@ function unwrapExclusiveFormats(root) {
 
 
 /* ============================================================
-   SPLIT EXCLUSIVE ANCESTORS
+   VISUAL CONTENT TEST
    ============================================================ */
 
+function hasMeaningfulInlineContent(node) {
+
+    if (!node) {
+        return false;
+    }
+
+    if (node.nodeType === Node.TEXT_NODE) {
+
+        return node.nodeValue
+            .replace(/\u200B/g, "")
+            .replace(/\u00A0/g, "")
+            .trim()
+            .length > 0;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+        return false;
+    }
+
+    if (
+        node.tagName.toLowerCase() === "br"
+    ) {
+        return false;
+    }
+
+    for (const child of node.childNodes) {
+
+        if (hasMeaningfulInlineContent(child)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function fragmentHasMeaningfulContent(fragment) {
+
+    if (!fragment) {
+        return false;
+    }
+
+    for (const child of fragment.childNodes) {
+
+        if (hasMeaningfulInlineContent(child)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+/* ============================================================
+   SPLIT EXCLUSIVE ANCESTORS AT RANGE
+   ============================================================ */
+
+/*
+ * IMPORTANT:
+ *
+ * Esta función era la causa principal del bug.
+ *
+ * Antes:
+ *
+ *     <code>texto|</code>
+ *
+ * terminaba pudiendo convertirse en:
+ *
+ *     <code>texto</code>
+ *     <code></code>
+ *     <strong>nuevo</strong>
+ *
+ * porque se insertaba el clon aunque no hubiera
+ * contenido después del cursor.
+ *
+ * Ahora solamente creamos la segunda mitad
+ * cuando realmente existe contenido significativo.
+ */
+
 function splitExclusiveAncestorsAtRange(range) {
+
     let node = range.startContainer;
 
     if (node.nodeType === Node.TEXT_NODE) {
@@ -199,42 +297,74 @@ function splitExclusiveAncestorsAtRange(range) {
     }
 
     while (node && node !== editor) {
+
         if (isExclusiveInlineElement(node)) {
+
             const parent = node.parentNode;
 
             if (!parent) {
                 break;
             }
 
-            const after = node.cloneNode(false);
+            const after =
+                node.cloneNode(false);
 
-            const tailRange = document.createRange();
+            const tailRange =
+                document.createRange();
 
             try {
+
                 tailRange.setStart(
                     range.startContainer,
                     range.startOffset
                 );
 
-                tailRange.setEndAfter(node);
+                tailRange.setEndAfter(
+                    node
+                );
 
                 const tail =
                     tailRange.extractContents();
 
-                if (tail.hasChildNodes()) {
-                    after.appendChild(tail);
+                /*
+                 * SOLUCIÓN:
+                 *
+                 * No insertamos el clon simplemente
+                 * porque tenga childNodes.
+                 *
+                 * Primero verificamos que realmente
+                 * tenga contenido visible.
+                 */
+                if (
+                    fragmentHasMeaningfulContent(
+                        tail
+                    )
+                ) {
+
+                    after.appendChild(
+                        tail
+                    );
+
+                    parent.insertBefore(
+                        after,
+                        node.nextSibling
+                    );
                 }
 
-                parent.insertBefore(
-                    after,
-                    node.nextSibling
+                /*
+                 * El cursor siempre queda después
+                 * de la primera mitad.
+                 */
+                range.setStartAfter(
+                    node
                 );
 
-                range.setStartAfter(node);
                 range.collapse(true);
 
                 node = parent;
+
             } catch (error) {
+
                 break;
             }
 
@@ -250,7 +380,11 @@ function splitExclusiveAncestorsAtRange(range) {
    EXCLUSIVE FORMAT HELPERS
    ============================================================ */
 
-function getExclusiveAncestorAtRange(range, selector) {
+function getExclusiveAncestorAtRange(
+    range,
+    selector
+) {
+
     if (!range) {
         return null;
     }
@@ -272,6 +406,7 @@ function getExclusiveAncestorAtRange(range, selector) {
 }
 
 function isInlineElementVisuallyEmpty(element) {
+
     if (!element) {
         return false;
     }
@@ -301,6 +436,7 @@ function deactivateExclusiveFormatAtCaret(
     range,
     selector
 ) {
+
     if (
         !range ||
         !range.collapsed
@@ -326,20 +462,20 @@ function deactivateExclusiveFormatAtCaret(
     }
 
 
-    /*
-     * --------------------------------------------------------
-     * CASO 1:
-     * El formato está completamente vacío.
-     * --------------------------------------------------------
-     */
+    /* --------------------------------------------------------
+       CASO 1: FORMATO COMPLETAMENTE VACÍO
+       -------------------------------------------------------- */
 
     if (
         isInlineElementVisuallyEmpty(
             activeElement
         )
     ) {
+
         const marker =
-            document.createTextNode("\u200B");
+            document.createTextNode(
+                "\u200B"
+            );
 
         parent.insertBefore(
             marker,
@@ -362,18 +498,17 @@ function deactivateExclusiveFormatAtCaret(
             window.getSelection();
 
         selection.removeAllRanges();
-        selection.addRange(plainRange);
+        selection.addRange(
+            plainRange
+        );
 
         return true;
     }
 
 
-    /*
-     * --------------------------------------------------------
-     * CASO 2:
-     * Partimos el formato exactamente donde está el cursor.
-     * --------------------------------------------------------
-     */
+    /* --------------------------------------------------------
+       CASO 2: PARTIR EL FORMATO
+       -------------------------------------------------------- */
 
     const after =
         activeElement.cloneNode(false);
@@ -395,22 +530,34 @@ function deactivateExclusiveFormatAtCaret(
         const tail =
             tailRange.extractContents();
 
-        if (tail.hasChildNodes()) {
-            after.appendChild(tail);
+        if (
+            fragmentHasMeaningfulContent(
+                tail
+            )
+        ) {
+            after.appendChild(
+                tail
+            );
         }
 
     } catch (error) {
+
         return false;
     }
 
 
     /*
-     * Solamente insertamos la segunda mitad
-     * si realmente tiene contenido.
+     * Solo insertamos la segunda mitad si
+     * contiene contenido real.
      */
-    if (
-        after.hasChildNodes()
-    ) {
+    const hasTail =
+        after.hasChildNodes() &&
+        hasMeaningfulInlineContent(
+            after
+        );
+
+    if (hasTail) {
+
         parent.insertBefore(
             after,
             activeElement.nextSibling
@@ -419,15 +566,16 @@ function deactivateExclusiveFormatAtCaret(
 
 
     /*
-     * El punto normal queda justo después
-     * de la primera mitad formateada.
+     * Marcador fuera del formato.
      */
     const marker =
-        document.createTextNode("\u200B");
+        document.createTextNode(
+            "\u200B"
+        );
 
     parent.insertBefore(
         marker,
-        after.hasChildNodes()
+        hasTail
             ? after
             : activeElement.nextSibling
     );
@@ -450,7 +598,9 @@ function deactivateExclusiveFormatAtCaret(
         window.getSelection();
 
     selection.removeAllRanges();
-    selection.addRange(plainRange);
+    selection.addRange(
+        plainRange
+    );
 
     return true;
 }
@@ -460,35 +610,56 @@ function deactivateExclusiveFormatAtCaret(
    SELECTION FULLY INSIDE FORMAT
    ============================================================ */
 
-function selectionFullyInside(selector, range) {
+function selectionFullyInside(
+    selector,
+    range
+) {
+
     if (!range) {
         return false;
     }
 
     if (range.collapsed) {
-        const node = range.startContainer;
 
-        if (node.nodeType === Node.TEXT_NODE) {
-            return !!node.parentElement?.closest(selector);
+        const node =
+            range.startContainer;
+
+        if (
+            node.nodeType ===
+            Node.TEXT_NODE
+        ) {
+
+            return !!node.parentElement
+                ?.closest(selector);
         }
 
-        if (node.nodeType === Node.ELEMENT_NODE) {
-            return !!node.closest(selector);
+        if (
+            node.nodeType ===
+            Node.ELEMENT_NODE
+        ) {
+
+            return !!node.closest(
+                selector
+            );
         }
 
         return false;
     }
 
-    const walker = document.createTreeWalker(
-        editor,
-        NodeFilter.SHOW_TEXT
-    );
+    const walker =
+        document.createTreeWalker(
+            editor,
+            NodeFilter.SHOW_TEXT
+        );
 
     let foundText = false;
     let valid = true;
     let node;
 
-    while ((node = walker.nextNode())) {
+    while (
+        (node = walker.nextNode())
+    ) {
+
         if (!node.nodeValue) {
             continue;
         }
@@ -498,7 +669,9 @@ function selectionFullyInside(selector, range) {
         }
 
         const meaningfulText =
-            node.nodeValue.replace(/\u200B/g, "").length;
+            node.nodeValue
+                .replace(/\u200B/g, "")
+                .length;
 
         if (!meaningfulText) {
             continue;
@@ -506,7 +679,11 @@ function selectionFullyInside(selector, range) {
 
         foundText = true;
 
-        if (!node.parentElement?.closest(selector)) {
+        if (
+            !node.parentElement
+                ?.closest(selector)
+        ) {
+
             valid = false;
             break;
         }
@@ -520,11 +697,15 @@ function selectionFullyInside(selector, range) {
 }
 
 function createExclusiveElement(tagName) {
+
     const element =
-        document.createElement(tagName);
+        document.createElement(
+            tagName
+        );
 
     if (tagName === "code") {
-        element.className = "inline-code";
+        element.className =
+            "inline-code";
     }
 
     return element;
@@ -536,25 +717,29 @@ function createExclusiveElement(tagName) {
    ============================================================ */
 
 function isBlockVisuallyEmpty(block) {
+
     if (!block) {
         return false;
     }
 
-    const clone = block.cloneNode(true);
+    const clone =
+        block.cloneNode(true);
 
     clone
         .querySelectorAll("br")
         .forEach(br => br.remove());
 
-    const text = clone.textContent
-        .replace(/\u200B/g, "")
-        .replace(/\u00A0/g, "")
-        .trim();
+    const text =
+        clone.textContent
+            .replace(/\u200B/g, "")
+            .replace(/\u00A0/g, "")
+            .trim();
 
     return text.length === 0;
 }
 
 function removeEmptyBlockBreak(block) {
+
     if (!block) {
         return;
     }
@@ -573,9 +758,6 @@ function removeEmptyBlockBreak(block) {
    EMPTY BLOCK DELETE PROTECTION
    ============================================================ */
 
-/*
- * Obtiene el bloque que contiene actualmente el cursor.
- */
 function getCurrentEditableBlock() {
 
     const node =
@@ -590,15 +772,11 @@ function getCurrentEditableBlock() {
     );
 }
 
-
-/*
- * Comprueba que la selección sea un cursor
- * y que esté exactamente al principio del bloque.
- */
 function isCaretAtBlockStart(
     range,
     block
 ) {
+
     if (
         !range ||
         !range.collapsed ||
@@ -622,26 +800,24 @@ function isCaretAtBlockStart(
         );
 
         return (
-            testRange.toString()
+            testRange
+                .toString()
                 .replace(/\u200B/g, "")
                 .trim()
                 .length === 0
         );
 
     } catch (error) {
+
         return false;
     }
 }
 
-
-/*
- * Comprueba que el cursor esté al final
- * del bloque.
- */
 function isCaretAtBlockEnd(
     range,
     block
 ) {
+
     if (
         !range ||
         !range.collapsed ||
@@ -665,34 +841,24 @@ function isCaretAtBlockEnd(
         );
 
         return (
-            testRange.toString()
+            testRange
+                .toString()
                 .replace(/\u200B/g, "")
                 .trim()
                 .length === 0
         );
 
     } catch (error) {
+
         return false;
     }
 }
 
 
-/*
- * Protege bloques visualmente vacíos contra
- * el comportamiento nativo del navegador.
- *
- * Esto evita:
- *
- *     [p vacío]
- *         ↑ Backspace
- *
- * que termine convirtiéndose en:
- *
- *     [p anterior + cursor arriba]
- *
- * y evita que el navegador fusione estructuras
- * de formato que nosotros controlamos manualmente.
- */
+/* ============================================================
+   EMPTY BLOCK DELETE PROTECTION
+   ============================================================ */
+
 editor.addEventListener(
     "keydown",
     event => {
@@ -717,9 +883,7 @@ editor.addEventListener(
         const range =
             selection.getRangeAt(0);
 
-        if (
-            !range.collapsed
-        ) {
+        if (!range.collapsed) {
             return;
         }
 
@@ -733,25 +897,12 @@ editor.addEventListener(
             return;
         }
 
-
-        /*
-         * Solo protegemos bloques que realmente
-         * están vacíos visualmente.
-         */
         if (
             !isBlockVisuallyEmpty(block)
         ) {
             return;
         }
 
-
-        /*
-         * BACKSPACE:
-         *
-         * Si estamos al principio de un bloque vacío,
-         * jamás dejamos que el navegador lo fusione
-         * con el bloque anterior.
-         */
         if (
             event.key === "Backspace" &&
             isCaretAtBlockStart(
@@ -775,15 +926,6 @@ editor.addEventListener(
             return;
         }
 
-
-        /*
-         * DELETE:
-         *
-         * Misma protección en sentido contrario.
-         *
-         * Evita que un bloque vacío pueda fusionarse
-         * con el bloque siguiente mediante Delete.
-         */
         if (
             event.key === "Delete" &&
             isCaretAtBlockEnd(
@@ -815,7 +957,9 @@ editor.addEventListener(
    TOGGLE EXCLUSIVE INLINE FORMAT
    ============================================================ */
 
-function toggleExclusiveInlineFormat(tagName) {
+function toggleExclusiveInlineFormat(
+    tagName
+) {
 
     restoreSelection();
 
@@ -909,6 +1053,16 @@ function toggleExclusiveInlineFormat(tagName) {
         }
 
 
+        /*
+         * AQUÍ está la parte importante:
+         *
+         * Si el cursor está dentro de code y
+         * vamos a cambiar a otro formato,
+         * primero dividimos el formato actual.
+         *
+         * La función corregida ya no genera
+         * un segundo elemento vacío.
+         */
         splitExclusiveAncestorsAtRange(
             range
         );
@@ -966,16 +1120,13 @@ function toggleExclusiveInlineFormat(tagName) {
     const fragment =
         range.extractContents();
 
-
     unwrapExclusiveFormats(
         fragment
     );
 
-
     splitExclusiveAncestorsAtRange(
         range
     );
-
 
     if (alreadyActive) {
 
@@ -1000,42 +1151,6 @@ function toggleExclusiveInlineFormat(tagName) {
     }
 
 
-    const finalRange =
-        document.createRange();
-
-    if (alreadyActive) {
-
-        finalRange.setStartAfter(
-            range.startContainer.childNodes[
-                Math.max(
-                    0,
-                    range.startOffset - 1
-                )
-            ] ||
-            range.startContainer
-        );
-
-    } else {
-
-        const inserted =
-            range.startContainer.childNodes[
-                Math.max(
-                    0,
-                    range.startOffset - 1
-                )
-            ];
-
-        if (inserted) {
-
-            finalRange.selectNodeContents(
-                inserted
-            );
-
-            finalRange.collapse(false);
-        }
-    }
-
-
     try {
 
         range.collapse(false);
@@ -1053,7 +1168,6 @@ function toggleExclusiveInlineFormat(tagName) {
         );
     }
 
-
     saveSelection();
 
     normalizeEditor();
@@ -1067,7 +1181,11 @@ function toggleExclusiveInlineFormat(tagName) {
    BASIC EXEC
    ============================================================ */
 
-function exec(command, value = null) {
+function exec(
+    command,
+    value = null
+) {
+
     restoreSelection();
 
     editor.focus();
@@ -1092,14 +1210,18 @@ function exec(command, value = null) {
    ============================================================ */
 
 function formatBlock(tag) {
+
     restoreSelection();
 
     editor.focus();
 
-    const current = getCurrentNode();
+    const current =
+        getCurrentNode();
 
     const bq =
-        current?.closest("blockquote");
+        current?.closest(
+            "blockquote"
+        );
 
     const currentBlock =
         current?.closest(
@@ -1126,14 +1248,20 @@ function formatBlock(tag) {
     ) {
 
         const p =
-            document.createElement("p");
+            document.createElement(
+                "p"
+            );
 
         p.innerHTML =
             bq.innerHTML;
 
-        bq.replaceWith(p);
+        bq.replaceWith(
+            p
+        );
 
-        placeCaretAtEnd(p);
+        placeCaretAtEnd(
+            p
+        );
 
     } else if (
         bq &&
@@ -1171,7 +1299,9 @@ toolbar.addEventListener(
     event => {
 
         const button =
-            event.target.closest(".tool");
+            event.target.closest(
+                ".tool"
+            );
 
         if (button) {
             event.preventDefault();
@@ -1184,7 +1314,9 @@ toolbar.addEventListener(
     event => {
 
         const button =
-            event.target.closest(".tool");
+            event.target.closest(
+                ".tool"
+            );
 
         if (!button) {
             return;
@@ -1278,16 +1410,21 @@ toolbar.addEventListener(
    ============================================================ */
 
 function getInlineCode() {
+
     return closestElement(
         "code.inline-code"
     );
 }
 
 function unwrapInlineCode(code) {
-    unwrapInlineElement(code);
+
+    unwrapInlineElement(
+        code
+    );
 }
 
 function toggleInlineCode() {
+
     toggleExclusiveInlineFormat(
         "code"
     );
@@ -1304,18 +1441,21 @@ inlineCodeButton.addEventListener(
    ============================================================ */
 
 function getCodeBlock() {
+
     return closestElement(
         "pre.code-block"
     );
 }
 
 function getCodeElement() {
+
     return closestElement(
         "pre.code-block code"
     );
 }
 
 function removeCodeBlock(pre) {
+
     if (!pre) {
         return;
     }
@@ -1337,7 +1477,9 @@ function removeCodeBlock(pre) {
     lines.forEach(line => {
 
         const p =
-            document.createElement("p");
+            document.createElement(
+                "p"
+            );
 
         if (line.trim().length === 0) {
 
@@ -1363,6 +1505,7 @@ function removeCodeBlock(pre) {
     );
 
     if (firstP) {
+
         placeCaretAtStart(
             firstP
         );
@@ -1404,7 +1547,9 @@ function enterCodeBlock() {
     ) {
 
         block =
-            document.createElement("p");
+            document.createElement(
+                "p"
+            );
 
         block.innerHTML =
             "<br>";
@@ -1415,13 +1560,17 @@ function enterCodeBlock() {
     }
 
     const pre =
-        document.createElement("pre");
+        document.createElement(
+            "pre"
+        );
 
     pre.className =
         "code-block";
 
     const code =
-        document.createElement("code");
+        document.createElement(
+            "code"
+        );
 
     code.textContent =
         block.textContent || "";
@@ -1598,7 +1747,9 @@ editor.addEventListener(
         event.preventDefault();
 
         const paragraph =
-            document.createElement("p");
+            document.createElement(
+                "p"
+            );
 
         paragraph.innerHTML =
             "<br>";
@@ -1732,6 +1883,7 @@ clearFormatButton.addEventListener(
                     code
                 )
             ) {
+
                 unwrapInlineCode(
                     code
                 );
@@ -1810,6 +1962,7 @@ function openLinkModal() {
 }
 
 function closeLinkModal() {
+
     linkModal.classList.remove(
         "open"
     );
@@ -1909,7 +2062,10 @@ applyLink.addEventListener(
 unlinkButton.addEventListener(
     "click",
     () => {
-        exec("unlink");
+
+        exec(
+            "unlink"
+        );
     }
 );
 
@@ -2084,6 +2240,7 @@ editor.addEventListener(
                     item.getAsFile();
 
                 if (file) {
+
                     insertImageFile(
                         file
                     );
@@ -2116,6 +2273,7 @@ editor.addEventListener(
                     )
             )
         ) {
+
             event.preventDefault();
         }
     }
@@ -2611,85 +2769,58 @@ function updateToolbarState() {
                 switch (action) {
 
                     case "paragraph":
-
                         active =
-                            block.tagName ===
-                            "P";
-
+                            block.tagName === "P";
                         break;
 
                     case "h1":
-
                         active =
-                            block.tagName ===
-                            "H1";
-
+                            block.tagName === "H1";
                         break;
 
                     case "h2":
-
                         active =
-                            block.tagName ===
-                            "H2";
-
+                            block.tagName === "H2";
                         break;
 
                     case "h3":
-
                         active =
-                            block.tagName ===
-                            "H3";
-
+                            block.tagName === "H3";
                         break;
 
                     case "h4":
-
                         active =
-                            block.tagName ===
-                            "H4";
-
+                            block.tagName === "H4";
                         break;
 
                     case "h5":
-
                         active =
-                            block.tagName ===
-                            "H5";
-
+                            block.tagName === "H5";
                         break;
 
                     case "h6":
-
                         active =
-                            block.tagName ===
-                            "H6";
-
+                            block.tagName === "H6";
                         break;
 
                     case "blockquote":
-
                         active =
                             block.tagName ===
                             "BLOCKQUOTE";
-
                         break;
 
                     case "unorderedList":
-
                         active =
                             !!block.closest(
                                 "ul:not(.task-list)"
                             );
-
                         break;
 
                     case "orderedList":
-
                         active =
                             !!block.closest(
                                 "ol"
                             );
-
                         break;
                 }
             }
@@ -2967,7 +3098,6 @@ function inlineToMarkdown(node) {
             );
     }
 
-
     if (
         node.nodeType !==
         Node.ELEMENT_NODE
@@ -2975,15 +3105,12 @@ function inlineToMarkdown(node) {
         return "";
     }
 
-
     const tag =
         node.tagName.toLowerCase();
-
 
     if (tag === "br") {
         return "\n";
     }
-
 
     if (
         tag === "strong" ||
@@ -2995,7 +3122,6 @@ function inlineToMarkdown(node) {
         )}**`;
     }
 
-
     if (
         tag === "em" ||
         tag === "i"
@@ -3006,14 +3132,12 @@ function inlineToMarkdown(node) {
         )}*`;
     }
 
-
     if (tag === "u") {
 
         return `<u>${childrenToMarkdown(
             node
         )}</u>`;
     }
-
 
     if (
         tag === "s" ||
@@ -3025,7 +3149,6 @@ function inlineToMarkdown(node) {
             node
         )}~~`;
     }
-
 
     if (
         tag === "code" &&
@@ -3040,7 +3163,6 @@ function inlineToMarkdown(node) {
         )}\``;
     }
 
-
     if (tag === "a") {
 
         return `[${childrenToMarkdown(
@@ -3050,7 +3172,6 @@ function inlineToMarkdown(node) {
         ) || ""})`;
     }
 
-
     if (tag === "span") {
 
         return childrenToMarkdown(
@@ -3058,14 +3179,12 @@ function inlineToMarkdown(node) {
         );
     }
 
-
     if (tag === "font") {
 
         return childrenToMarkdown(
             node
         );
     }
-
 
     return childrenToMarkdown(
         node
@@ -3086,7 +3205,6 @@ function blockToMarkdown(node) {
             );
     }
 
-
     if (
         node.nodeType !==
         Node.ELEMENT_NODE
@@ -3094,10 +3212,8 @@ function blockToMarkdown(node) {
         return "";
     }
 
-
     const tag =
         node.tagName.toLowerCase();
-
 
     if (
         tag === "p" &&
@@ -3139,7 +3255,6 @@ function blockToMarkdown(node) {
 `;
     }
 
-
     if (
         /^h[1-6]$/.test(tag)
     ) {
@@ -3156,14 +3271,12 @@ function blockToMarkdown(node) {
         ).trim()}\n\n`;
     }
 
-
     if (tag === "p") {
 
         return `${childrenToMarkdown(
             node
         ).trim()}\n\n`;
     }
-
 
     if (tag === "blockquote") {
 
@@ -3180,11 +3293,9 @@ function blockToMarkdown(node) {
             + "\n\n";
     }
 
-
     if (tag === "hr") {
         return "---\n\n";
     }
-
 
     if (
         tag === "pre" &&
@@ -3202,7 +3313,6 @@ ${node.textContent.replace(
 `;
     }
 
-
     if (tag === "ul") {
 
         return [
@@ -3218,7 +3328,6 @@ ${node.textContent.replace(
             + "\n\n";
     }
 
-
     if (tag === "ol") {
 
         return [
@@ -3233,7 +3342,6 @@ ${node.textContent.replace(
             .join("\n")
             + "\n\n";
     }
-
 
     return childrenToMarkdown(
         node
@@ -3284,42 +3392,35 @@ function markdownInlineToHTML(text) {
             text
         );
 
-
     result = result.replace(
         /`([^`]+)`/g,
         '<code class="inline-code">$1</code>'
     );
-
 
     result = result.replace(
         /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
         '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 
-
     result = result.replace(
         /\*\*([^\*]+)\*\*/g,
         "<strong>$1</strong>"
     );
-
 
     result = result.replace(
         /~~([^\~]+)~~/g,
         "<s>$1</s>"
     );
 
-
     result = result.replace(
         /(?<!\*)\*([^\*\n]+)\*(?!\*)/g,
         "<em>$1</em>"
     );
 
-
     result = result.replace(
         /&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi,
         "<u>$1</u>"
     );
-
 
     return result;
 }
@@ -3327,7 +3428,6 @@ function markdownInlineToHTML(text) {
 function markdownToHTML(markdown) {
 
     const imageBlocks = [];
-
 
     markdown =
         markdown.replace(
@@ -3354,7 +3454,6 @@ function markdownToHTML(markdown) {
             }
         );
 
-
     const lines =
         markdown.split(
             /\r?\n/
@@ -3364,7 +3463,6 @@ function markdownToHTML(markdown) {
 
     let i = 0;
 
-
     while (
         i < lines.length
     ) {
@@ -3372,12 +3470,10 @@ function markdownToHTML(markdown) {
         const line =
             lines[i];
 
-
         const imageToken =
             line.match(
                 /^___IMAGE_BLOCK_(\d+)___$/
             );
-
 
         if (imageToken) {
 
@@ -3401,7 +3497,6 @@ function markdownToHTML(markdown) {
 
             continue;
         }
-
 
         if (
             line.trim().startsWith(
@@ -3442,7 +3537,6 @@ function markdownToHTML(markdown) {
             continue;
         }
 
-
         if (!line.trim()) {
 
             i++;
@@ -3450,12 +3544,10 @@ function markdownToHTML(markdown) {
             continue;
         }
 
-
         const heading =
             line.match(
                 /^(#{1,6})\s+(.+)$/
             );
-
 
         if (heading) {
 
@@ -3473,7 +3565,6 @@ function markdownToHTML(markdown) {
             continue;
         }
 
-
         if (
             /^(\*{3,}|-{3,}|_{3,})$/.test(
                 line.trim()
@@ -3488,7 +3579,6 @@ function markdownToHTML(markdown) {
 
             continue;
         }
-
 
         if (
             line.trim().startsWith(
@@ -3530,7 +3620,6 @@ function markdownToHTML(markdown) {
             continue;
         }
 
-
         if (
             /^[-*+]\s+/.test(
                 line
@@ -3566,7 +3655,6 @@ function markdownToHTML(markdown) {
 
             continue;
         }
-
 
         if (
             /^\d+\.\s+/.test(
@@ -3604,12 +3692,10 @@ function markdownToHTML(markdown) {
             continue;
         }
 
-
         const paragraphLines =
             [line];
 
         i++;
-
 
         while (
             i < lines.length &&
@@ -3641,7 +3727,6 @@ function markdownToHTML(markdown) {
             i++;
         }
 
-
         html.push(
             `<p>${paragraphLines
                 .map(
@@ -3652,7 +3737,6 @@ function markdownToHTML(markdown) {
                 )}</p>`
         );
     }
-
 
     return html.join(
         "\n"
@@ -3667,6 +3751,7 @@ function markdownToHTML(markdown) {
 loadButton.addEventListener(
     "click",
     () => {
+
         fileInput.click();
     }
 );
@@ -3722,7 +3807,6 @@ async function saveMarkdown() {
     const markdown =
         htmlToMarkdown();
 
-
     if (
         "showSaveFilePicker" in
         window
@@ -3750,7 +3834,6 @@ async function saveMarkdown() {
                     }
                 );
 
-
             const writable =
                 await handle.createWritable();
 
@@ -3773,7 +3856,6 @@ async function saveMarkdown() {
         }
     }
 
-
     const blob =
         new Blob(
             [markdown],
@@ -3783,12 +3865,10 @@ async function saveMarkdown() {
             }
         );
 
-
     const url =
         URL.createObjectURL(
             blob
         );
-
 
     const anchor =
         document.createElement(
@@ -3808,7 +3888,6 @@ async function saveMarkdown() {
     anchor.click();
 
     anchor.remove();
-
 
     setTimeout(
         () => {
@@ -3852,7 +3931,6 @@ document.addEventListener(
             return;
         }
 
-
         if (
             (
                 event.ctrlKey ||
@@ -3882,6 +3960,7 @@ linkModal.addEventListener(
             event.target ===
             linkModal
         ) {
+
             closeLinkModal();
         }
     }
@@ -3895,6 +3974,7 @@ imageModal.addEventListener(
             event.target ===
             imageModal
         ) {
+
             closeImageModal();
         }
     }
