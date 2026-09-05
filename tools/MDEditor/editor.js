@@ -293,25 +293,10 @@ function isInlineElementVisuallyEmpty(element) {
 }
 
 
-/*
- * DESACTIVAR FORMATO EN EL CURSOR
- *
- * Esta función NO elimina el formato existente.
- *
- * Ejemplo:
- *
- *     <strong>Hola mundo</strong>
- *                 ^
- *
- * se convierte en:
- *
- *     <strong>Hola </strong>\u200Bmundo
- *                      ^
- *
- * La parte anterior permanece en negrita.
- * La parte posterior permanece en negrita.
- * El cursor queda en una posición NORMAL.
- */
+/* ============================================================
+   DESACTIVAR FORMATO EN EL CURSOR
+   ============================================================ */
+
 function deactivateExclusiveFormatAtCaret(
     range,
     selector
@@ -344,7 +329,7 @@ function deactivateExclusiveFormatAtCaret(
     /*
      * --------------------------------------------------------
      * CASO 1:
-     * El formato solamente contiene el marcador vacío.
+     * El formato está completamente vacío.
      * --------------------------------------------------------
      */
 
@@ -386,9 +371,7 @@ function deactivateExclusiveFormatAtCaret(
     /*
      * --------------------------------------------------------
      * CASO 2:
-     * El cursor está dentro de texto formateado.
-     *
-     * Partimos manualmente el elemento activo.
+     * Partimos el formato exactamente donde está el cursor.
      * --------------------------------------------------------
      */
 
@@ -400,10 +383,6 @@ function deactivateExclusiveFormatAtCaret(
 
     try {
 
-        /*
-         * Extraemos desde el cursor hasta el final
-         * del elemento activo.
-         */
         tailRange.setStart(
             range.startContainer,
             range.startOffset
@@ -426,65 +405,36 @@ function deactivateExclusiveFormatAtCaret(
 
 
     /*
-     * Insertamos la segunda mitad inmediatamente
-     * después de la primera.
-     */
-    parent.insertBefore(
-        after,
-        activeElement.nextSibling
-    );
-
-
-    /*
-     * Ahora el cursor queda inmediatamente después
-     * de la primera mitad.
-     */
-    const insertionRange =
-        document.createRange();
-
-    insertionRange.setStartAfter(
-        activeElement
-    );
-
-    insertionRange.collapse(true);
-
-
-    /*
-     * Si la segunda mitad quedó completamente vacía,
-     * no necesitamos conservarla.
+     * Solamente insertamos la segunda mitad
+     * si realmente tiene contenido.
      */
     if (
-        isInlineElementVisuallyEmpty(after)
+        after.hasChildNodes()
     ) {
-        after.remove();
+        parent.insertBefore(
+            after,
+            activeElement.nextSibling
+        );
     }
 
 
     /*
-     * --------------------------------------------------------
-     * PUNTO DE INSERCIÓN NORMAL
-     * --------------------------------------------------------
-     *
-     * Insertamos un ZWSP como nodo de texto independiente.
-     *
-     * Esto es importante:
-     *
-     *     <strong>Hola </strong>\u200Bmundo
-     *                              ^
-     *
-     * El cursor NO está dentro de strong.
+     * El punto normal queda justo después
+     * de la primera mitad formateada.
      */
     const marker =
         document.createTextNode("\u200B");
 
-    insertionRange.insertNode(
-        marker
+    parent.insertBefore(
+        marker,
+        after.hasChildNodes()
+            ? after
+            : activeElement.nextSibling
     );
 
 
     /*
-     * Colocamos el cursor dentro del marcador
-     * y no dentro del elemento formateado.
+     * Cursor fuera del elemento formateado.
      */
     const plainRange =
         document.createRange();
@@ -496,13 +446,11 @@ function deactivateExclusiveFormatAtCaret(
 
     plainRange.collapse(true);
 
-
     const selection =
         window.getSelection();
 
     selection.removeAllRanges();
     selection.addRange(plainRange);
-
 
     return true;
 }
@@ -622,6 +570,248 @@ function removeEmptyBlockBreak(block) {
 
 
 /* ============================================================
+   EMPTY BLOCK DELETE PROTECTION
+   ============================================================ */
+
+/*
+ * Obtiene el bloque que contiene actualmente el cursor.
+ */
+function getCurrentEditableBlock() {
+
+    const node =
+        getCurrentNode();
+
+    if (!node) {
+        return null;
+    }
+
+    return node.closest(
+        "p,h1,h2,h3,h4,h5,h6,blockquote,li"
+    );
+}
+
+
+/*
+ * Comprueba que la selección sea un cursor
+ * y que esté exactamente al principio del bloque.
+ */
+function isCaretAtBlockStart(
+    range,
+    block
+) {
+    if (
+        !range ||
+        !range.collapsed ||
+        !block
+    ) {
+        return false;
+    }
+
+    const testRange =
+        document.createRange();
+
+    try {
+
+        testRange.selectNodeContents(
+            block
+        );
+
+        testRange.setEnd(
+            range.startContainer,
+            range.startOffset
+        );
+
+        return (
+            testRange.toString()
+                .replace(/\u200B/g, "")
+                .trim()
+                .length === 0
+        );
+
+    } catch (error) {
+        return false;
+    }
+}
+
+
+/*
+ * Comprueba que el cursor esté al final
+ * del bloque.
+ */
+function isCaretAtBlockEnd(
+    range,
+    block
+) {
+    if (
+        !range ||
+        !range.collapsed ||
+        !block
+    ) {
+        return false;
+    }
+
+    const testRange =
+        document.createRange();
+
+    try {
+
+        testRange.selectNodeContents(
+            block
+        );
+
+        testRange.setStart(
+            range.startContainer,
+            range.startOffset
+        );
+
+        return (
+            testRange.toString()
+                .replace(/\u200B/g, "")
+                .trim()
+                .length === 0
+        );
+
+    } catch (error) {
+        return false;
+    }
+}
+
+
+/*
+ * Protege bloques visualmente vacíos contra
+ * el comportamiento nativo del navegador.
+ *
+ * Esto evita:
+ *
+ *     [p vacío]
+ *         ↑ Backspace
+ *
+ * que termine convirtiéndose en:
+ *
+ *     [p anterior + cursor arriba]
+ *
+ * y evita que el navegador fusione estructuras
+ * de formato que nosotros controlamos manualmente.
+ */
+editor.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key !== "Backspace" &&
+            event.key !== "Delete"
+        ) {
+            return;
+        }
+
+        const selection =
+            window.getSelection();
+
+        if (
+            !selection ||
+            !selection.rangeCount
+        ) {
+            return;
+        }
+
+        const range =
+            selection.getRangeAt(0);
+
+        if (
+            !range.collapsed
+        ) {
+            return;
+        }
+
+        const block =
+            getCurrentEditableBlock();
+
+        if (
+            !block ||
+            !editor.contains(block)
+        ) {
+            return;
+        }
+
+
+        /*
+         * Solo protegemos bloques que realmente
+         * están vacíos visualmente.
+         */
+        if (
+            !isBlockVisuallyEmpty(block)
+        ) {
+            return;
+        }
+
+
+        /*
+         * BACKSPACE:
+         *
+         * Si estamos al principio de un bloque vacío,
+         * jamás dejamos que el navegador lo fusione
+         * con el bloque anterior.
+         */
+        if (
+            event.key === "Backspace" &&
+            isCaretAtBlockStart(
+                range,
+                block
+            )
+        ) {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            placeCaretAtStart(
+                block
+            );
+
+            saveSelection();
+
+            updateToolbarState();
+            updateStatus();
+
+            return;
+        }
+
+
+        /*
+         * DELETE:
+         *
+         * Misma protección en sentido contrario.
+         *
+         * Evita que un bloque vacío pueda fusionarse
+         * con el bloque siguiente mediante Delete.
+         */
+        if (
+            event.key === "Delete" &&
+            isCaretAtBlockEnd(
+                range,
+                block
+            )
+        ) {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            placeCaretAtStart(
+                block
+            );
+
+            saveSelection();
+
+            updateToolbarState();
+            updateStatus();
+
+            return;
+        }
+    },
+    true
+);
+
+
+/* ============================================================
    TOGGLE EXCLUSIVE INLINE FORMAT
    ============================================================ */
 
@@ -656,10 +846,6 @@ function toggleExclusiveInlineFormat(tagName) {
 
     if (range.collapsed) {
 
-        /*
-         * Si estamos en un bloque vacío,
-         * primero eliminamos el <br>.
-         */
         const currentBlock =
             getCurrentNode()?.closest(
                 "p,h1,h2,h3,h4,h5,h6,blockquote,li"
@@ -694,12 +880,6 @@ function toggleExclusiveInlineFormat(tagName) {
         }
 
 
-        /*
-         * IMPORTANTE:
-         *
-         * Calculamos esto DESPUÉS de haber corregido
-         * la posición del cursor en un bloque vacío.
-         */
         const alreadyActive =
             selectionFullyInside(
                 selector,
@@ -707,22 +887,6 @@ function toggleExclusiveInlineFormat(tagName) {
             );
 
 
-        /*
-         * ====================================================
-         * FORMATO YA ACTIVO
-         * ====================================================
-         *
-         * Aquí está el cambio importante.
-         *
-         * NO usamos:
-         *
-         *     splitExclusiveAncestorsAtRange()
-         *
-         * para desactivar.
-         *
-         * Usamos una operación específica que deja
-         * explícitamente el cursor fuera del formato.
-         */
         if (alreadyActive) {
 
             const deactivated =
@@ -745,15 +909,6 @@ function toggleExclusiveInlineFormat(tagName) {
         }
 
 
-        /*
-         * ====================================================
-         * FORMATO NO ACTIVO
-         * ====================================================
-         *
-         * Aquí mantenemos el comportamiento anterior:
-         * partimos cualquier formato existente y aplicamos
-         * el nuevo.
-         */
         splitExclusiveAncestorsAtRange(
             range
         );
@@ -772,9 +927,6 @@ function toggleExclusiveInlineFormat(tagName) {
         );
 
 
-        /*
-         * Cursor dentro del nuevo formato.
-         */
         const newRange =
             document.createRange();
 
@@ -815,19 +967,11 @@ function toggleExclusiveInlineFormat(tagName) {
         range.extractContents();
 
 
-    /*
-     * Eliminamos formatos exclusivos del contenido
-     * seleccionado antes de volver a insertarlo.
-     */
     unwrapExclusiveFormats(
         fragment
     );
 
 
-    /*
-     * Dividimos los formatos que puedan rodear
-     * el punto de inserción.
-     */
     splitExclusiveAncestorsAtRange(
         range
     );
@@ -835,19 +979,12 @@ function toggleExclusiveInlineFormat(tagName) {
 
     if (alreadyActive) {
 
-        /*
-         * El formato ya estaba activo:
-         * dejamos el contenido normal.
-         */
         range.insertNode(
             fragment
         );
 
     } else {
 
-        /*
-         * Aplicamos exclusivamente el nuevo formato.
-         */
         const element =
             createExclusiveElement(
                 tagName
@@ -863,9 +1000,6 @@ function toggleExclusiveInlineFormat(tagName) {
     }
 
 
-    /*
-     * Dejamos el cursor al final.
-     */
     const finalRange =
         document.createRange();
 
