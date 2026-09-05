@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Markdown Editor</title>
+
+    <link rel="stylesheet" href="editor.css">
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-icon">M</div>
+            <span>Markdown Editor</span>
+        </div>
+
+        <div class="top-actions">
+            <button class="top-button" id="loadButton" type="button">📂 Cargar archivo</button>
+            <button class="top-button primary" id="saveButton" type="button">💾 Descargar</button>
+        </div>
+    </header>
+
+    <input type="file" id="fileInput" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+
+    <div class="toolbar-wrapper">
+        <div class="toolbar" id="toolbar">
+
+            <div class="toolbar-group">
+                <button class="tool" data-action="paragraph" title="Texto normal">Normal</button>
+                <button class="tool" data-action="h1" title="Título 1">H1</button>
+                <button class="tool" data-action="h2" title="Título 2">H2</button>
+                <button class="tool" data-action="h3" title="Título 3">H3</button>
+                <button class="tool" data-action="h4" title="Título 4">H4</button>
+                <button class="tool" data-action="h5" title="Título 5">H5</button>
+                <button class="tool" data-action="h6" title="Título 6">H6</button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="tool" data-format="strong" title="Negrita"><strong>B</strong></button>
+                <button class="tool" data-format="em" title="Cursiva"><em>I</em></button>
+                <button class="tool" data-format="u" title="Subrayado"><u>U</u></button>
+                <button class="tool" data-format="s" title="Tachado"><s>S</s></button>
+                <button class="tool" id="inlineCodeButton" title="Código inline">&lt;/&gt;</button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="tool" data-action="unorderedList" title="Lista con viñetas">•☰</button>
+                <button class="tool" data-action="orderedList" title="Lista numerada">1☰</button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="tool" data-action="blockquote" title="Cita">❝</button>
+                <button class="tool" id="codeBlockButton" title="Bloque de código">{ }</button>
+                <button class="tool" data-action="horizontalRule" title="Separador">―</button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="tool" data-command="justifyLeft" title="Alinear izquierda">☰</button>
+                <button class="tool" data-command="justifyCenter" title="Centrar">≡</button>
+                <button class="tool" data-command="justifyRight" title="Alinear derecha">☷</button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="tool" id="linkButton" title="Insertar enlace — Ctrl+K">🔗</button>
+                <button class="tool" id="unlinkButton" title="Eliminar enlace">⛓</button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="tool" data-command="undo" title="Deshacer">↶</button>
+                <button class="tool" data-command="redo" title="Rehacer">↷</button>
+                <button class="tool danger" id="clearFormatButton" title="Limpiar formato">Tx</button>
+            </div>
+
+        </div>
+    </div>
+
+    <main class="editor-shell">
+        <div id="document" class="document" contenteditable="true" spellcheck="true">
+            <p>Empieza a escribir...</p>
+        </div>
+    </main>
+
+    <div class="statusbar">
+        <span id="formatStatus">Normal</span>
+        <span>•</span>
+        <span id="wordStatus">0 palabras</span>
+        <span>•</span>
+        <span id="charStatus">0 caracteres</span>
+    </div>
+
+    <div class="modal-overlay" id="linkModal">
+        <div class="modal">
+            <h3>Insertar enlace</h3>
+
+            <div class="modal-field">
+                <label>URL</label>
+                <input id="linkUrl" type="url" placeholder="https://ejemplo.com">
+            </div>
+
+            <div class="modal-field">
+                <label>Texto</label>
+                <input id="linkText" type="text" placeholder="Texto del enlace">
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-button" id="cancelLink">Cancelar</button>
+                <button class="modal-button primary" id="applyLink">Insertar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="imageModal">
+        <div class="modal">
+            <h3>Configuración de imagen</h3>
+
+            <div class="modal-field">
+                <label>Tamaño</label>
+                <select id="imageSizeMode">
+                    <option value="percent">Porcentaje</option>
+                    <option value="px">Pixeles</option>
+                    <option value="auto">Automático</option>
+                </select>
+            </div>
+
+            <div class="modal-field" id="imageSizeValueContainer">
+                <label>Valor</label>
+                <input id="imageSizeValue" type="number" min="10" max="100" value="80">
+            </div>
+
+            <div class="modal-field">
+                <label>Texto alternativo</label>
+                <input id="imageAlt" type="text" placeholder="Descripción de la imagen">
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-button danger" id="removeImage">Eliminar</button>
+                <button class="modal-button" id="cancelImage">Cancelar</button>
+                <button class="modal-button primary" id="applyImage">Aplicar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="editor.js"></script>
+
+</body>
+
+</html>
