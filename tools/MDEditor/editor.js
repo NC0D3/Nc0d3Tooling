@@ -3,7 +3,6 @@
    ============================================================ */
 //Fixes vro
 const editor=document.getElementById("document"),toolbar=document.getElementById("toolbar"),fileInput=document.getElementById("fileInput"),loadButton=document.getElementById("loadButton"),saveButton=document.getElementById("saveButton"),formatStatus=document.getElementById("formatStatus"),wordStatus=document.getElementById("wordStatus"),charStatus=document.getElementById("charStatus"),inlineCodeButton=document.getElementById("inlineCodeButton"),codeBlockButton=document.getElementById("codeBlockButton"),clearFormatButton=document.getElementById("clearFormatButton");
-
 /* ============================================================
    SELECTION
    ============================================================ */
@@ -37,7 +36,6 @@ document.addEventListener("selectionchange",()=>{
         updateToolbarState();
     }
 });
-
 /* ============================================================
    CURRENT NODE
    ============================================================ */
@@ -55,7 +53,6 @@ function closestElement(selector){
     if(node.nodeType===Node.ELEMENT_NODE)return node.closest(selector);
     return node.parentElement?.closest(selector)||null;
 }
-
 /* ============================================================
    MUTUALLY EXCLUSIVE INLINE FORMATS
    ============================================================ */
@@ -77,7 +74,6 @@ function unwrapExclusiveFormats(root){
     const elements=[...root.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)];
     elements.forEach(unwrapInlineElement);
 }
-
 /* ============================================================
    VISUAL CONTENT TEST
    ============================================================ */
@@ -94,7 +90,6 @@ function fragmentHasMeaningfulContent(fragment){
     for(const child of fragment.childNodes)if(hasMeaningfulInlineContent(child))return true;
     return false;
 }
-
 /* ============================================================
    SPLIT EXCLUSIVE ANCESTORS AT RANGE
    ============================================================ */
@@ -123,7 +118,6 @@ function splitExclusiveAncestorsAtRange(range){
         node=node.parentElement;
     }
 }
-
 /* ============================================================
    EXCLUSIVE FORMAT HELPERS
    ============================================================ */
@@ -140,7 +134,6 @@ function isInlineElementVisuallyEmpty(element){
     clone.querySelectorAll("br").forEach(br=>br.remove());
     return clone.textContent.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim().length===0;
 }
-
 /* ============================================================
    DESACTIVAR FORMATO EN EL CURSOR
    ============================================================ */
@@ -150,7 +143,6 @@ function deactivateExclusiveFormatAtCaret(range,selector){
     if(!activeElement)return false;
     const parent=activeElement.parentNode;
     if(!parent)return false;
-
     if(isInlineElementVisuallyEmpty(activeElement)){
         const marker=document.createTextNode("\u200B");
         parent.insertBefore(marker,activeElement);
@@ -163,7 +155,6 @@ function deactivateExclusiveFormatAtCaret(range,selector){
         selection.addRange(plainRange);
         return true;
     }
-
     const after=activeElement.cloneNode(false),tailRange=document.createRange();
     try{
         tailRange.setStart(range.startContainer,range.startOffset);
@@ -171,13 +162,10 @@ function deactivateExclusiveFormatAtCaret(range,selector){
         const tail=tailRange.extractContents();
         if(fragmentHasMeaningfulContent(tail))after.appendChild(tail);
     }catch(error){return false;}
-
     const hasTail=after.hasChildNodes()&&hasMeaningfulInlineContent(after);
     if(hasTail)parent.insertBefore(after,activeElement.nextSibling);
-
     const marker=document.createTextNode("\u200B");
     parent.insertBefore(marker,hasTail?after:activeElement.nextSibling);
-
     const plainRange=document.createRange();
     plainRange.setStart(marker,1);
     plainRange.collapse(true);
@@ -186,7 +174,6 @@ function deactivateExclusiveFormatAtCaret(range,selector){
     selection.addRange(plainRange);
     return true;
 }
-
 /* ============================================================
    SELECTION FULLY INSIDE FORMAT
    ============================================================ */
@@ -198,7 +185,6 @@ function selectionFullyInside(selector,range){
         if(node.nodeType===Node.ELEMENT_NODE)return !!node.closest(selector);
         return false;
     }
-
     const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
     let foundText=false,valid=true,node;
     while((node=walker.nextNode())){
@@ -220,7 +206,6 @@ function createExclusiveElement(tagName){
     if(tagName==="code")element.className="inline-code";
     return element;
 }
-
 /* ============================================================
    EMPTY BLOCK HELPER
    ============================================================ */
@@ -236,7 +221,6 @@ function removeEmptyBlockBreak(block){
     if(!isBlockVisuallyEmpty(block))return;
     block.querySelectorAll("br").forEach(br=>br.remove());
 }
-
 /* ============================================================
    EMPTY BLOCK DELETE PROTECTION
    ============================================================ */
@@ -245,55 +229,36 @@ function getCurrentEditableBlock(){
     if(!node)return null;
     return node.closest("p,h1,h2,h3,h4,h5,h6,blockquote,li");
 }
-function isCaretAtBlockStart(range,block){
-    if(!range||!range.collapsed||!block)return false;
-    const testRange=document.createRange();
-    try{
-        testRange.selectNodeContents(block);
-        testRange.setEnd(range.startContainer,range.startOffset);
-        return testRange.toString().replace(/\u200B/g,"").trim().length===0;
-    }catch(error){return false;}
-}
-function isCaretAtBlockEnd(range,block){
-    if(!range||!range.collapsed||!block)return false;
-    const testRange=document.createRange();
-    try{
-        testRange.selectNodeContents(block);
-        testRange.setStart(range.startContainer,range.startOffset);
-        return testRange.toString().replace(/\u200B/g,"").trim().length===0;
-    }catch(error){return false;}
+function editorHasMeaningfulContent(){
+    for(const node of editor.childNodes){
+        if(node.nodeType===Node.TEXT_NODE){
+            if(node.nodeValue.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim())return true;
+            continue;
+        }
+        if(node.nodeType!==Node.ELEMENT_NODE)continue;
+        if(node.matches("p,h1,h2,h3,h4,h5,h6,blockquote,li")){
+            if(!isBlockVisuallyEmpty(node))return true;
+            continue;
+        }
+        if(node.matches("pre,hr,img,p.md-image"))return true;
+        if(hasMeaningfulInlineContent(node))return true;
+    }
+    return false;
 }
 editor.addEventListener("keydown",event=>{
     if(event.key!=="Backspace"&&event.key!=="Delete")return;
     const selection=window.getSelection();
-    if(!selection||!selection.rangeCount)return;
-    const range=selection.getRangeAt(0);
-    if(!range.collapsed)return;
-    const block=getCurrentEditableBlock();
-    if(!block||!editor.contains(block))return;
-    if(!isBlockVisuallyEmpty(block))return;
-
-    if(event.key==="Backspace"&&isCaretAtBlockStart(range,block)){
-        event.preventDefault();
-        event.stopPropagation();
-        placeCaretAtStart(block);
-        saveSelection();
-        updateToolbarState();
-        updateStatus();
-        return;
-    }
-
-    if(event.key==="Delete"&&isCaretAtBlockEnd(range,block)){
-        event.preventDefault();
-        event.stopPropagation();
-        placeCaretAtStart(block);
-        saveSelection();
-        updateToolbarState();
-        updateStatus();
-        return;
-    }
+    if(!selection||!selection.rangeCount||!selection.isCollapsed)return;
+    const range=selection.getRangeAt(0),block=getCurrentEditableBlock();
+    if(!block||!editor.contains(block)||!isBlockVisuallyEmpty(block))return;
+    if(editorHasMeaningfulContent())return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    placeCaretAtStart(block);
+    saveSelection();
+    updateToolbarState();
+    updateStatus();
 },true);
-
 /* ============================================================
    TOGGLE EXCLUSIVE INLINE FORMAT
    ============================================================ */
@@ -304,7 +269,6 @@ function toggleExclusiveInlineFormat(tagName){
     if(!selection||!selection.rangeCount)return;
     let range=selection.getRangeAt(0);
     const selector=tagName==="code"?"code.inline-code":tagName;
-
     if(range.collapsed){
         const currentBlock=getCurrentNode()?.closest("p,h1,h2,h3,h4,h5,h6,blockquote,li");
         if(currentBlock&&isBlockVisuallyEmpty(currentBlock)){
@@ -313,9 +277,7 @@ function toggleExclusiveInlineFormat(tagName){
             const newSelection=window.getSelection();
             if(newSelection&&newSelection.rangeCount)range=newSelection.getRangeAt(0);
         }
-
         const alreadyActive=selectionFullyInside(selector,range);
-
         if(alreadyActive){
             const deactivated=deactivateExclusiveFormatAtCaret(range,selector);
             if(deactivated){
@@ -326,12 +288,10 @@ function toggleExclusiveInlineFormat(tagName){
                 return;
             }
         }
-
         splitExclusiveAncestorsAtRange(range);
         const element=createExclusiveElement(tagName);
         element.textContent="\u200B";
         range.insertNode(element);
-
         const newRange=document.createRange();
         newRange.selectNodeContents(element);
         newRange.collapse(false);
@@ -343,12 +303,10 @@ function toggleExclusiveInlineFormat(tagName){
         updateStatus();
         return;
     }
-
     const alreadyActive=selectionFullyInside(selector,range);
     const fragment=range.extractContents();
     unwrapExclusiveFormats(fragment);
     splitExclusiveAncestorsAtRange(range);
-
     if(alreadyActive){
         range.insertNode(fragment);
     }else{
@@ -356,7 +314,6 @@ function toggleExclusiveInlineFormat(tagName){
         element.appendChild(fragment);
         range.insertNode(element);
     }
-
     try{
         range.collapse(false);
         selection.removeAllRanges();
@@ -364,13 +321,11 @@ function toggleExclusiveInlineFormat(tagName){
     }catch(error){
         placeCaretAtEnd(editor);
     }
-
     saveSelection();
     normalizeEditor();
     updateToolbarState();
     updateStatus();
 }
-
 /* ============================================================
    BASIC EXEC
    ============================================================ */
@@ -383,7 +338,6 @@ function exec(command,value=null){
     updateToolbarState();
     updateStatus();
 }
-
 /* ============================================================
    FORMAT BLOCK
    ============================================================ */
@@ -391,7 +345,6 @@ function formatBlock(tag){
     restoreSelection();
     editor.focus();
     const current=getCurrentNode(),bq=current?.closest("blockquote"),currentBlock=current?.closest("p,h1,h2,h3,h4,h5,h6,blockquote");
-
     if(currentBlock&&/^H[1-6]$/.test(currentBlock.tagName)&&currentBlock.tagName.toLowerCase()===tag){
         document.execCommand("formatBlock",false,"p");
     }else if(bq&&tag==="p"){
@@ -405,13 +358,11 @@ function formatBlock(tag){
     }else{
         document.execCommand("formatBlock",false,tag);
     }
-
     saveSelection();
     normalizeEditor();
     updateToolbarState();
     updateStatus();
 }
-
 /* ============================================================
    TOOLBAR
    ============================================================ */
@@ -423,19 +374,15 @@ toolbar.addEventListener("click",event=>{
     const button=event.target.closest(".tool");
     if(!button)return;
     const command=button.dataset.command,action=button.dataset.action,format=button.dataset.format;
-
     if(format){
         toggleExclusiveInlineFormat(format);
         return;
     }
-
     if(command){
         exec(command);
         return;
     }
-
     if(!action)return;
-
     switch(action){
         case "paragraph":formatBlock("p");break;
         case "h1":formatBlock("h1");break;
@@ -450,7 +397,6 @@ toolbar.addEventListener("click",event=>{
         case "horizontalRule":exec("insertHorizontalRule");break;
     }
 });
-
 /* ============================================================
    INLINE CODE
    ============================================================ */
@@ -458,7 +404,6 @@ function getInlineCode(){return closestElement("code.inline-code");}
 function unwrapInlineCode(code){unwrapInlineElement(code);}
 function toggleInlineCode(){toggleExclusiveInlineFormat("code");}
 inlineCodeButton.addEventListener("click",toggleInlineCode);
-
 /* ============================================================
    CODE BLOCK
    ============================================================ */
@@ -467,14 +412,12 @@ function getCodeElement(){return closestElement("pre.code-block code");}
 function removeCodeBlock(pre){
     if(!pre)return;
     const code=pre.querySelector("code"),content=code?code.textContent:pre.textContent,lines=content.split("\n"),fragment=document.createDocumentFragment();
-
     lines.forEach(line=>{
         const p=document.createElement("p");
         if(line.trim().length===0)p.innerHTML="<br>";
         else p.textContent=line;
         fragment.appendChild(p);
     });
-
     const firstP=fragment.firstChild;
     pre.replaceWith(fragment);
     if(firstP)placeCaretAtStart(firstP);
@@ -489,13 +432,11 @@ function enterCodeBlock(){
     if(!selection||!selection.rangeCount)return;
     const current=getCurrentNode();
     let block=current?.closest("p,div,h1,h2,h3,h4,h5,h6,blockquote");
-
     if(!block||!editor.contains(block)){
         block=document.createElement("p");
         block.innerHTML="<br>";
         editor.appendChild(block);
     }
-
     const pre=document.createElement("pre");
     pre.className="code-block";
     const code=document.createElement("code");
@@ -518,7 +459,6 @@ function toggleCodeBlock(){
     enterCodeBlock();
 }
 codeBlockButton.addEventListener("click",toggleCodeBlock);
-
 /* ============================================================
    CODE BLOCK KEYBOARD
    ============================================================ */
@@ -541,7 +481,6 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 });
-
 /* ============================================================
    ENTER -> NORMAL PARAGRAPH
    ============================================================ */
@@ -555,7 +494,6 @@ editor.addEventListener("keydown",event=>{
     if(getCurrentNode()?.closest("pre.code-block"))return;
     const current=getCurrentNode(),heading=current?.closest("h1,h2,h3,h4,h5,h6");
     if(!heading||!editor.contains(heading))return;
-
     event.preventDefault();
     const paragraph=document.createElement("p");
     paragraph.innerHTML="<br>";
@@ -571,7 +509,6 @@ editor.addEventListener("keydown",event=>{
     if(current?.closest("pre.code-block"))return;
     const oldBlock=current?.closest("p,blockquote,li");
     if(!oldBlock)return;
-
     requestAnimationFrame(()=>{
         const newCurrent=getCurrentNode(),newBlock=newCurrent?.closest("p,blockquote,li");
         if(!newBlock||!editor.contains(newBlock))return;
@@ -583,7 +520,6 @@ editor.addEventListener("keydown",event=>{
         updateStatus();
     });
 });
-
 /* ============================================================
    CLEAR FORMAT
    ============================================================ */
@@ -595,22 +531,18 @@ clearFormatButton.addEventListener("click",()=>{
     document.execCommand("removeFormat",false,null);
     const range=selection.getRangeAt(0);
     const codes=editor.querySelectorAll("code.inline-code");
-
     codes.forEach(code=>{
         if(range.intersectsNode(code))unwrapInlineCode(code);
     });
-
     saveSelection();
     normalizeEditor();
     updateToolbarState();
     updateStatus();
 });
-
 /* ============================================================
    LINKS
    ============================================================ */
 const linkModal=document.getElementById("linkModal"),linkUrl=document.getElementById("linkUrl"),linkText=document.getElementById("linkText"),cancelLink=document.getElementById("cancelLink"),applyLink=document.getElementById("applyLink"),linkButton=document.getElementById("linkButton"),unlinkButton=document.getElementById("unlinkButton");
-
 function openLinkModal(){
     saveSelection();
     const selection=window.getSelection();
@@ -633,7 +565,6 @@ applyLink.addEventListener("click",()=>{
     anchor.href=url;
     anchor.target="_blank";
     anchor.rel="noopener noreferrer";
-
     if(range.collapsed){
         anchor.textContent=text||url;
         range.insertNode(anchor);
@@ -642,7 +573,6 @@ applyLink.addEventListener("click",()=>{
         anchor.appendChild(selected);
         range.insertNode(anchor);
     }
-
     placeCaretAtEnd(anchor);
     saveSelection();
     closeLinkModal();
@@ -650,7 +580,6 @@ applyLink.addEventListener("click",()=>{
     updateStatus();
 });
 unlinkButton.addEventListener("click",()=>{exec("unlink");});
-
 /* ============================================================
    IMAGE SYSTEM
    ============================================================ */
@@ -662,24 +591,20 @@ function nextImageId(){
 function insertImageFile(file){
     if(!file||!file.type.startsWith("image/"))return;
     const reader=new FileReader();
-
     reader.onload=event=>{
         const id=nextImageId(),wrapper=document.createElement("p");
         wrapper.className="md-image";
         wrapper.id=id;
         wrapper.setAttribute("align","center");
-
         const image=document.createElement("img");
         image.id=id;
         image.alt="";
         image.src=event.target.result;
         image.style.width="80%";
         wrapper.appendChild(image);
-
         restoreSelection();
         editor.focus();
         const selection=window.getSelection();
-
         if(selection&&selection.rangeCount){
             const range=selection.getRangeAt(0);
             range.collapse(false);
@@ -691,14 +616,11 @@ function insertImageFile(file){
         }else{
             editor.appendChild(wrapper);
         }
-
         saveSelection();
         updateStatus();
     };
-
     reader.readAsDataURL(file);
 }
-
 /* ============================================================
    IMAGE PASTE
    ============================================================ */
@@ -708,13 +630,11 @@ editor.addEventListener("paste",event=>{
     const images=[...clipboard.items].filter(item=>item.kind==="file"&&item.type.startsWith("image/"));
     if(!images.length)return;
     event.preventDefault();
-
     images.forEach(item=>{
         const file=item.getAsFile();
         if(file)insertImageFile(file);
     });
 },true);
-
 /* ============================================================
    IMAGE DRAG DROP
    ============================================================ */
@@ -728,7 +648,6 @@ editor.addEventListener("drop",event=>{
     event.preventDefault();
     images.forEach(insertImageFile);
 });
-
 /* ============================================================
    IMAGE CLICK
    ============================================================ */
@@ -738,17 +657,14 @@ editor.addEventListener("click",event=>{
     if(!image.closest("p.md-image"))return;
     openImageModal(image);
 });
-
 /* ============================================================
    IMAGE MODAL
    ============================================================ */
 const imageModal=document.getElementById("imageModal"),imageSizeMode=document.getElementById("imageSizeMode"),imageSizeValue=document.getElementById("imageSizeValue"),imageSizeValueContainer=document.getElementById("imageSizeValueContainer"),imageAlt=document.getElementById("imageAlt"),applyImage=document.getElementById("applyImage"),cancelImage=document.getElementById("cancelImage"),removeImage=document.getElementById("removeImage");
-
 function openImageModal(image){
     selectedImage=image;
     image.classList.add("selected-image");
     const width=image.style.width;
-
     if(!width||width==="auto"){
         imageSizeMode.value="auto";
     }else if(width.endsWith("%")){
@@ -758,7 +674,6 @@ function openImageModal(image){
         imageSizeMode.value="px";
         imageSizeValue.value=parseFloat(width);
     }
-
     imageAlt.value=image.alt||"";
     updateImageSizeInput();
     imageModal.classList.add("open");
@@ -773,9 +688,7 @@ function updateImageSizeInput(){
         imageSizeValueContainer.style.display="none";
         return;
     }
-
     imageSizeValueContainer.style.display="block";
-
     if(imageSizeMode.value==="percent"){
         imageSizeValue.min=10;
         imageSizeValue.max=100;
@@ -789,7 +702,6 @@ cancelImage.addEventListener("click",closeImageModal);
 applyImage.addEventListener("click",()=>{
     if(!selectedImage)return;
     const mode=imageSizeMode.value,value=parseFloat(imageSizeValue.value);
-
     if(mode==="auto"){
         selectedImage.style.width="auto";
     }else if(mode==="percent"&&Number.isFinite(value)){
@@ -797,7 +709,6 @@ applyImage.addEventListener("click",()=>{
     }else if(mode==="px"&&Number.isFinite(value)){
         selectedImage.style.width=`${Math.max(50,value)}px`;
     }
-
     selectedImage.alt=imageAlt.value;
     closeImageModal();
     updateStatus();
@@ -811,7 +722,6 @@ removeImage.addEventListener("click",()=>{
     synchronizeImageIds();
     updateStatus();
 });
-
 /* ============================================================
    IMAGE IDS
    ============================================================ */
@@ -825,7 +735,6 @@ function synchronizeImageIds(){
         if(!image.style.width)image.style.width="80%";
     });
 }
-
 /* ============================================================
    TOOLBAR STATE
    ============================================================ */
@@ -833,31 +742,23 @@ function updateToolbarState(){
     const selection=window.getSelection();
     let range=null;
     if(selection&&selection.rangeCount)range=selection.getRangeAt(0);
-
     toolbar.querySelectorAll(".tool[data-format]").forEach(button=>{
         const format=button.dataset.format,active=range&&selectionFullyInside(format,range);
         button.classList.toggle("active",!!active);
     });
-
     const inlineCodeActive=range&&selectionFullyInside("code.inline-code",range);
     inlineCodeButton.classList.toggle("active",!!inlineCodeActive);
     codeBlockButton.classList.toggle("active",!!getCodeBlock());
-
     const left=toolbar.querySelector('[data-command="justifyLeft"]'),center=toolbar.querySelector('[data-command="justifyCenter"]'),right=toolbar.querySelector('[data-command="justifyRight"]');
-
     if(left)left.classList.toggle("active",document.queryCommandState("justifyLeft"));
     if(center)center.classList.toggle("active",document.queryCommandState("justifyCenter"));
     if(right)right.classList.toggle("active",document.queryCommandState("justifyRight"));
-
     const node=getCurrentNode();
     if(!node)return;
-
     const block=node.closest("h1,h2,h3,h4,h5,h6,blockquote,p,pre,li");
-
     toolbar.querySelectorAll("[data-action]").forEach(button=>{
         const action=button.dataset.action;
         let active=false;
-
         if(block){
             switch(action){
                 case "paragraph":active=block.tagName==="P";break;
@@ -872,11 +773,9 @@ function updateToolbarState(){
                 case "orderedList":active=!!block.closest("ol");break;
             }
         }
-
         button.classList.toggle("active",active);
     });
 }
-
 /* ============================================================
    STATUS
    ============================================================ */
@@ -884,27 +783,22 @@ function updateStatus(){
     const text=editor.innerText.replace(/\s+/g," ").trim(),words=text?text.split(/\s+/).length:0;
     wordStatus.textContent=`${words}${words===1?" palabra":" palabras"}`;
     charStatus.textContent=`${text.length}${text.length===1?" carácter":" caracteres"}`;
-
     const node=getCurrentNode();
     if(!node){
         formatStatus.textContent="Normal";
         return;
     }
-
     if(getCodeBlock()){
         formatStatus.textContent="Código";
         return;
     }
-
     const block=node.closest("h1,h2,h3,h4,h5,h6,blockquote,pre,p,li");
     if(!block){
         formatStatus.textContent="Normal";
         return;
     }
-
     formatStatus.textContent=block.tagName==="BLOCKQUOTE"?"Cita":block.tagName;
 }
-
 /* ============================================================
    CARET
    ============================================================ */
@@ -928,7 +822,6 @@ function placeCaretAtStart(element){
     selection.addRange(range);
     editor.focus();
 }
-
 /* ============================================================
    NORMALIZE
    ============================================================ */
@@ -956,14 +849,12 @@ function normalizeEditor(){
     normalizeExclusiveFormatting();
     synchronizeImageIds();
 }
-
 /* ============================================================
    MARKDOWN SERIALIZATION
    ============================================================ */
 function escapeAttribute(value){
     return String(value).replace(/&/g,"&amp;").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
-
 /* ------------------------------------------------------------
    INLINE SERIALIZATION
    ------------------------------------------------------------ */
@@ -974,7 +865,6 @@ function childrenToMarkdown(node){
 function inlineToMarkdown(node){
     if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," ");
     if(node.nodeType!==Node.ELEMENT_NODE)return "";
-
     const tag=node.tagName.toLowerCase();
     if(tag==="br")return "\n";
     if(tag==="strong"||tag==="b")return `**${childrenToMarkdown(node)}**`;
@@ -986,7 +876,6 @@ function inlineToMarkdown(node){
     if(tag==="span"||tag==="font")return childrenToMarkdown(node);
     return childrenToMarkdown(node);
 }
-
 /* ------------------------------------------------------------
    BLOCK DETECTION
    ------------------------------------------------------------ */
@@ -995,69 +884,53 @@ function isMarkdownBlockElement(node){
     const tag=node.tagName.toLowerCase();
     return /^h[1-6]$/.test(tag)||tag==="p"||tag==="div"||tag==="blockquote"||tag==="ul"||tag==="ol"||tag==="li"||tag==="pre"||tag==="hr";
 }
-
 /* ------------------------------------------------------------
    MIXED BLOCK / INLINE SERIALIZATION
    ------------------------------------------------------------ */
 function serializeMixedChildren(node){
     if(!node)return "";
     const output=[];
-
     for(const child of node.childNodes){
         if(child.nodeType===Node.TEXT_NODE){
             output.push(child.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," "));
             continue;
         }
-
         if(child.nodeType!==Node.ELEMENT_NODE)continue;
-
         const tag=child.tagName.toLowerCase();
-
         if(tag==="ul"||tag==="ol"||tag==="blockquote"||tag==="pre"||tag==="hr"||/^h[1-6]$/.test(tag)||tag==="p"||tag==="div"){
             output.push(blockToMarkdown(child));
             continue;
         }
-
         output.push(inlineToMarkdown(child));
     }
-
     return output.join("");
 }
-
 /* ------------------------------------------------------------
    LIST ITEM SERIALIZATION
    ------------------------------------------------------------ */
 function listItemInlineMarkdown(li){
     if(!li)return "";
     const output=[];
-
     for(const child of li.childNodes){
         if(child.nodeType===Node.TEXT_NODE){
             output.push(child.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," "));
             continue;
         }
-
         if(child.nodeType!==Node.ELEMENT_NODE)continue;
-
         const tag=child.tagName.toLowerCase();
-
         if(tag==="ul"||tag==="ol")continue;
-
         if(tag==="p"||tag==="div"){
             output.push(serializeMixedChildren(child).trim());
             continue;
         }
-
         output.push(inlineToMarkdown(child));
     }
-
     return output.join("").trim();
 }
 function serializeNestedList(list,indent="    "){
     const markdown=blockToMarkdown(list).trimEnd();
     return markdown.split("\n").map(line=>line?indent+line:line).join("\n");
 }
-
 /* ------------------------------------------------------------
    BLOCK SERIALIZATION
    ------------------------------------------------------------ */
@@ -1065,17 +938,13 @@ function blockToMarkdown(node){
     if(!node)return "";
     if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"");
     if(node.nodeType!==Node.ELEMENT_NODE)return "";
-
     const tag=node.tagName.toLowerCase();
-
     if(tag==="p"&&node.classList.contains("md-image")){
         const image=node.querySelector("img");
         if(!image)return "";
-
         const id=image.id||node.id||"evidencia_001";
         const alt=escapeAttribute(image.alt||"");
         const src=image.getAttribute("src")||"";
-
         return `<p align='center' id='${id}'>
     <img
         id='${id}'
@@ -1085,28 +954,23 @@ function blockToMarkdown(node){
 
 `;
     }
-
     if(/^h[1-6]$/.test(tag)){
         const level=Number(tag.substring(1));
         const content=serializeMixedChildren(node).trim();
         return `${"#".repeat(level)} ${content}\n\n`;
     }
-
     if(tag==="p"){
         const content=serializeMixedChildren(node).trim();
         if(!content)return "\n";
         return `${content}\n\n`;
     }
-
     if(tag==="blockquote"){
         const content=serializeMixedChildren(node).trim();
         if(!content)return ">\n\n";
         const lines=content.split("\n");
         return lines.map(line=>line.length?`> ${line}`:">").join("\n")+"\n\n";
     }
-
     if(tag==="hr")return "---\n\n";
-
     if(tag==="pre"&&node.classList.contains("code-block")){
         const content=node.textContent.replace(/\u200B/g,"").replace(/\n$/,"");
         return `\`\`\`
@@ -1115,51 +979,37 @@ ${content}
 
 `;
     }
-
     if(tag==="ul"){
         const items=[...node.children].filter(child=>child.tagName.toLowerCase()==="li");
         if(!items.length)return "";
-
         const lines=[];
-
         items.forEach(li=>{
             const content=listItemInlineMarkdown(li);
             lines.push(`- ${content}`);
-
             const nestedLists=[...li.children].filter(child=>{
                 const childTag=child.tagName.toLowerCase();
                 return childTag==="ul"||childTag==="ol";
             });
-
             nestedLists.forEach(nested=>lines.push(serializeNestedList(nested)));
         });
-
         return lines.join("\n")+"\n\n";
     }
-
     if(tag==="ol"){
         const items=[...node.children].filter(child=>child.tagName.toLowerCase()==="li");
         if(!items.length)return "";
-
         const lines=[];
-
         items.forEach((li,index)=>{
             const content=listItemInlineMarkdown(li);
             lines.push(`${index+1}. ${content}`);
-
             const nestedLists=[...li.children].filter(child=>{
                 const childTag=child.tagName.toLowerCase();
                 return childTag==="ul"||childTag==="ol";
             });
-
             nestedLists.forEach(nested=>lines.push(serializeNestedList(nested)));
         });
-
         return lines.join("\n")+"\n\n";
     }
-
     if(tag==="li")return listItemInlineMarkdown(node)+"\n\n";
-
     if(tag==="pre"){
         const content=node.textContent.replace(/\u200B/g,"").replace(/\n$/,"");
         return `\`\`\`
@@ -1168,33 +1018,26 @@ ${content}
 
 `;
     }
-
     if(tag==="div")return serializeMixedChildren(node);
-
     return serializeMixedChildren(node);
 }
-
 /* ------------------------------------------------------------
    HTML -> MARKDOWN
    ------------------------------------------------------------ */
 function htmlToMarkdown(){
     synchronizeImageIds();
     const parts=[];
-
     for(const node of editor.childNodes){
         if(node.nodeType===Node.TEXT_NODE){
             const text=node.nodeValue.replace(/\u200B/g,"").trim();
             if(text)parts.push(`${text}\n\n`);
             continue;
         }
-
         if(node.nodeType!==Node.ELEMENT_NODE)continue;
         parts.push(blockToMarkdown(node));
     }
-
     return parts.join("").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()+"\n";
 }
-
 /* ============================================================
    MARKDOWN LOADER
    ============================================================ */
@@ -1213,23 +1056,18 @@ function markdownInlineToHTML(text){
     result=result.replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi,"<u>$1</u>");
     return result;
 }
-
 function markdownToHTML(markdown){
     const imageBlocks=[];
-
     markdown=markdown.replace(/<p\s+align=['"]center['"]\s+id=['"]([^'"]+)['"]>\s*<img\s+id=['"]([^'"]+)['"]\s+alt=['"]([^'"]*)['"]\s+src=['"]([^'"]+)['"]\s*>\s*<\/p>/gi,(_,wrapperId,imageId,alt,src)=>{
         const token=`___IMAGE_BLOCK_${imageBlocks.length}___`;
         imageBlocks.push({wrapperId,imageId,alt,src});
         return token;
     });
-
     const lines=markdown.split(/\r?\n/),html=[];
     let i=0;
-
     while(i<lines.length){
         const line=lines[i];
         const imageToken=line.match(/^___IMAGE_BLOCK_(\d+)___$/);
-
         if(imageToken){
             const data=imageBlocks[Number(imageToken[1])];
             html.push(`
@@ -1243,92 +1081,70 @@ function markdownToHTML(markdown){
             i++;
             continue;
         }
-
         if(line.trim().startsWith("```")){
             const codeLines=[];
             i++;
-
             while(i<lines.length&&!lines[i].trim().startsWith("```")){
                 codeLines.push(lines[i]);
                 i++;
             }
-
             if(i<lines.length)i++;
-
             html.push(`<pre class="code-block"><code>${escapeHTML(codeLines.join("\n"))}</code></pre>`);
             continue;
         }
-
         if(!line.trim()){
             i++;
             continue;
         }
-
         const heading=line.match(/^(#{1,6})\s+(.+)$/);
-
         if(heading){
             const level=heading[1].length;
             html.push(`<h${level}>${markdownInlineToHTML(heading[2])}</h${level}>`);
             i++;
             continue;
         }
-
         if(/^(\*{3,}|-{3,}|_{3,})$/.test(line.trim())){
             html.push("<hr>");
             i++;
             continue;
         }
-
         if(line.trim().startsWith(">")){
             const quoteLines=[];
-
             while(i<lines.length&&lines[i].trim().startsWith(">")){
                 quoteLines.push(lines[i].replace(/^>\s?/,""));
                 i++;
             }
-
             html.push(`<blockquote>${quoteLines.map(markdownInlineToHTML).join("<br>")}</blockquote>`);
             continue;
         }
-
         if(/^[-*+]\s+/.test(line)){
             const items=[];
-
             while(i<lines.length&&/^[-*+]\s+/.test(lines[i])){
                 items.push(`<li>${markdownInlineToHTML(lines[i].replace(/^[-*+]\s+/,""))}</li>`);
                 i++;
             }
-
             html.push(`<ul>${items.join("")}</ul>`);
             continue;
         }
-
         if(/^\d+\.\s+/.test(line)){
             const items=[];
-
             while(i<lines.length&&/^\d+\.\s+/.test(lines[i])){
                 items.push(`<li>${markdownInlineToHTML(lines[i].replace(/^\d+\.\s+/,""))}</li>`);
                 i++;
             }
-
             html.push(`<ol>${items.join("")}</ol>`);
             continue;
         }
-
         const paragraphLines=[line];
         i++;
-
         while(i<lines.length&&lines[i].trim()&&!/^#{1,6}\s+/.test(lines[i])&&!/^```/.test(lines[i])&&!/^[-*+]\s+/.test(lines[i])&&!/^\d+\.\s+/.test(lines[i])&&!/^>/.test(lines[i])&&!/^___IMAGE_BLOCK_\d+___$/.test(lines[i])){
             paragraphLines.push(lines[i]);
             i++;
         }
-
         html.push(`<p>${paragraphLines.map(markdownInlineToHTML).join("<br>")}</p>`);
     }
-
     return html.join("\n");
 }
-
 /* ============================================================
    LOAD
    ============================================================ */
@@ -1336,7 +1152,6 @@ loadButton.addEventListener("click",()=>{fileInput.click();});
 fileInput.addEventListener("change",async()=>{
     const file=fileInput.files?.[0];
     if(!file)return;
-
     try{
         const markdown=await file.text();
         editor.innerHTML=markdownToHTML(markdown);
@@ -1347,16 +1162,13 @@ fileInput.addEventListener("change",async()=>{
     }catch(error){
         console.error("Error cargando Markdown:",error);
     }
-
     fileInput.value="";
 });
-
 /* ============================================================
    SAVE
    ============================================================ */
 async function saveMarkdown(){
     const markdown=htmlToMarkdown();
-
     if("showSaveFilePicker" in window){
         try{
             const handle=await window.showSaveFilePicker({
@@ -1366,7 +1178,6 @@ async function saveMarkdown(){
                     accept:{"text/markdown":[".md"]}
                 }]
             });
-
             const writable=await handle.createWritable();
             await writable.write(markdown);
             await writable.close();
@@ -1375,21 +1186,17 @@ async function saveMarkdown(){
             if(error.name==="AbortError")return;
         }
     }
-
     const blob=new Blob([markdown],{type:"text/markdown;charset=utf-8"});
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement("a");
-
     anchor.href=url;
     anchor.download="Markdown.md";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-
     setTimeout(()=>{URL.revokeObjectURL(url);},1000);
 }
 saveButton.addEventListener("click",saveMarkdown);
-
 /* ============================================================
    KEYBOARD SHORTCUTS
    ============================================================ */
@@ -1399,13 +1206,11 @@ document.addEventListener("keydown",event=>{
         saveMarkdown();
         return;
     }
-
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
         event.preventDefault();
         openLinkModal();
     }
 });
-
 /* ============================================================
    MODAL BACKDROPS
    ============================================================ */
@@ -1415,7 +1220,6 @@ linkModal.addEventListener("click",event=>{
 imageModal.addEventListener("click",event=>{
     if(event.target===imageModal)closeImageModal();
 });
-
 /* ============================================================
    INITIALIZATION
    ============================================================ */
