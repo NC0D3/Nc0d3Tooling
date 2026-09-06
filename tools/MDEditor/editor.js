@@ -1,6 +1,5 @@
 const editor=document.getElementById("document"),toolbar=document.getElementById("toolbar"),fileInput=document.getElementById("fileInput"),loadButton=document.getElementById("loadButton"),saveButton=document.getElementById("saveButton"),formatStatus=document.getElementById("formatStatus"),wordStatus=document.getElementById("wordStatus"),charStatus=document.getElementById("charStatus"),inlineCodeButton=document.getElementById("inlineCodeButton"),codeBlockButton=document.getElementById("codeBlockButton"),clearFormatButton=document.getElementById("clearFormatButton");
-
-let savedRange=null;
+let savedRange=null,exporting=false,exportCancelRequested=false,exportWritable=null,loading=false;
 
 function saveSelection(){
     const selection=window.getSelection();
@@ -20,9 +19,10 @@ function restoreSelection(){
         return false;
     }
 }
-editor.addEventListener("mouseup",()=>{saveSelection();updateToolbarState();});
-editor.addEventListener("keyup",()=>{saveSelection();updateToolbarState();updateStatus();});
+editor.addEventListener("mouseup",()=>{if(loading)return;saveSelection();updateToolbarState();});
+editor.addEventListener("keyup",()=>{if(exporting||loading)return;saveSelection();updateToolbarState();updateStatus();});
 document.addEventListener("selectionchange",()=>{
+    if(exporting||loading)return;
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount)return;
     const range=selection.getRangeAt(0);
@@ -31,7 +31,6 @@ document.addEventListener("selectionchange",()=>{
         updateToolbarState();
     }
 });
-
 function getCurrentNode(){
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount)return null;
@@ -46,7 +45,6 @@ function closestElement(selector){
     if(node.nodeType===Node.ELEMENT_NODE)return node.closest(selector);
     return node.parentElement?.closest(selector)||null;
 }
-
 const EXCLUSIVE_INLINE_SELECTOR="strong,b,em,i,u,s,strike,del,code.inline-code";
 function isExclusiveInlineElement(element){
     if(!element||element.nodeType!==Node.ELEMENT_NODE)return false;
@@ -62,13 +60,11 @@ function unwrapInlineElement(element){
 }
 function unwrapExclusiveFormats(root){
     if(!root)return;
-    const elements=[...root.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)];
-    elements.forEach(unwrapInlineElement);
+    [...root.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)].forEach(unwrapInlineElement);
 }
-
 function hasMeaningfulInlineContent(node){
     if(!node)return false;
-    if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim().length>0;
+    if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"").replace(/\u00A0/g," ").trim().length>0;
     if(node.nodeType!==Node.ELEMENT_NODE)return false;
     if(node.tagName.toLowerCase()==="br")return false;
     for(const child of node.childNodes)if(hasMeaningfulInlineContent(child))return true;
@@ -79,7 +75,6 @@ function fragmentHasMeaningfulContent(fragment){
     for(const child of fragment.childNodes)if(hasMeaningfulInlineContent(child))return true;
     return false;
 }
-
 function splitExclusiveAncestorsAtRange(range){
     let node=range.startContainer;
     if(node.nodeType===Node.TEXT_NODE)node=node.parentElement;
@@ -105,7 +100,6 @@ function splitExclusiveAncestorsAtRange(range){
         node=node.parentElement;
     }
 }
-
 function getExclusiveAncestorAtRange(range,selector){
     if(!range)return null;
     let node=range.startContainer;
@@ -119,7 +113,6 @@ function isInlineElementVisuallyEmpty(element){
     clone.querySelectorAll("br").forEach(br=>br.remove());
     return clone.textContent.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim().length===0;
 }
-
 function deactivateExclusiveFormatAtCaret(range,selector){
     if(!range||!range.collapsed)return false;
     const activeElement=getExclusiveAncestorAtRange(range,selector);
@@ -157,7 +150,6 @@ function deactivateExclusiveFormatAtCaret(range,selector){
     selection.addRange(plainRange);
     return true;
 }
-
 function selectionFullyInside(selector,range){
     if(!range)return false;
     if(range.collapsed){
@@ -169,8 +161,7 @@ function selectionFullyInside(selector,range){
     const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
     let foundText=false,valid=true,node;
     while((node=walker.nextNode())){
-        if(!node.nodeValue)continue;
-        if(!range.intersectsNode(node))continue;
+        if(!node.nodeValue||!range.intersectsNode(node))continue;
         const meaningfulText=node.nodeValue.replace(/\u200B/g,"").length;
         if(!meaningfulText)continue;
         foundText=true;
@@ -187,20 +178,16 @@ function createExclusiveElement(tagName){
     if(tagName==="code")element.className="inline-code";
     return element;
 }
-
 function isBlockVisuallyEmpty(block){
     if(!block)return false;
     const clone=block.cloneNode(true);
     clone.querySelectorAll("br").forEach(br=>br.remove());
-    const text=clone.textContent.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim();
-    return text.length===0;
+    return clone.textContent.replace(/\u200B/g,"").replace(/\u00A0/g," ").trim().length===0;
 }
 function removeEmptyBlockBreak(block){
-    if(!block)return;
-    if(!isBlockVisuallyEmpty(block))return;
+    if(!block||!isBlockVisuallyEmpty(block))return;
     block.querySelectorAll("br").forEach(br=>br.remove());
 }
-
 function getCurrentEditableBlock(){
     const node=getCurrentNode();
     if(!node)return null;
@@ -209,7 +196,7 @@ function getCurrentEditableBlock(){
 function editorHasMeaningfulContent(){
     for(const node of editor.childNodes){
         if(node.nodeType===Node.TEXT_NODE){
-            if(node.nodeValue.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim())return true;
+            if(node.nodeValue.replace(/\u200B/g,"").replace(/\u00A0/g," ").trim())return true;
             continue;
         }
         if(node.nodeType!==Node.ELEMENT_NODE)continue;
@@ -223,12 +210,12 @@ function editorHasMeaningfulContent(){
     return false;
 }
 editor.addEventListener("keydown",event=>{
+    if(exporting||loading)return;
     if(event.key!=="Backspace"&&event.key!=="Delete")return;
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount||!selection.isCollapsed)return;
     const range=selection.getRangeAt(0),block=getCurrentEditableBlock();
-    if(!block||!editor.contains(block)||!isBlockVisuallyEmpty(block))return;
-    if(editorHasMeaningfulContent())return;
+    if(!block||!editor.contains(block)||!isBlockVisuallyEmpty(block)||editorHasMeaningfulContent())return;
     event.preventDefault();
     event.stopImmediatePropagation();
     placeCaretAtStart(block);
@@ -236,8 +223,8 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 },true);
-
 function toggleExclusiveInlineFormat(tagName){
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     const selection=window.getSelection();
@@ -252,10 +239,8 @@ function toggleExclusiveInlineFormat(tagName){
             const newSelection=window.getSelection();
             if(newSelection&&newSelection.rangeCount)range=newSelection.getRangeAt(0);
         }
-        const alreadyActive=selectionFullyInside(selector,range);
-        if(alreadyActive){
-            const deactivated=deactivateExclusiveFormatAtCaret(range,selector);
-            if(deactivated){
+        if(selectionFullyInside(selector,range)){
+            if(deactivateExclusiveFormatAtCaret(range,selector)){
                 saveSelection();
                 normalizeEditor();
                 updateToolbarState();
@@ -282,9 +267,8 @@ function toggleExclusiveInlineFormat(tagName){
     const fragment=range.extractContents();
     unwrapExclusiveFormats(fragment);
     splitExclusiveAncestorsAtRange(range);
-    if(alreadyActive){
-        range.insertNode(fragment);
-    }else{
+    if(alreadyActive)range.insertNode(fragment);
+    else{
         const element=createExclusiveElement(tagName);
         element.appendChild(fragment);
         range.insertNode(element);
@@ -293,16 +277,14 @@ function toggleExclusiveInlineFormat(tagName){
         range.collapse(false);
         selection.removeAllRanges();
         selection.addRange(range);
-    }catch(error){
-        placeCaretAtEnd(editor);
-    }
+    }catch(error){placeCaretAtEnd(editor);}
     saveSelection();
     normalizeEditor();
     updateToolbarState();
     updateStatus();
 }
-
 function exec(command,value=null){
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     document.execCommand(command,false,value);
@@ -311,14 +293,13 @@ function exec(command,value=null){
     updateToolbarState();
     updateStatus();
 }
-
 function formatBlock(tag){
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     const current=getCurrentNode(),bq=current?.closest("blockquote"),currentBlock=current?.closest("p,h1,h2,h3,h4,h5,h6,blockquote");
-    if(currentBlock&&/^H[1-6]$/.test(currentBlock.tagName)&&currentBlock.tagName.toLowerCase()===tag){
-        document.execCommand("formatBlock",false,"p");
-    }else if(bq&&tag==="p"){
+    if(currentBlock&&/^H[1-6]$/.test(currentBlock.tagName)&&currentBlock.tagName.toLowerCase()===tag)document.execCommand("formatBlock",false,"p");
+    else if(bq&&tag==="p"){
         const p=document.createElement("p");
         p.innerHTML=bq.innerHTML;
         bq.replaceWith(p);
@@ -326,31 +307,24 @@ function formatBlock(tag){
     }else if(bq&&tag==="blockquote"){
         formatBlock("p");
         return;
-    }else{
-        document.execCommand("formatBlock",false,tag);
-    }
+    }else document.execCommand("formatBlock",false,tag);
     saveSelection();
     normalizeEditor();
     updateToolbarState();
     updateStatus();
 }
-
 toolbar.addEventListener("mousedown",event=>{
+    if(exporting||loading){event.preventDefault();return;}
     const button=event.target.closest(".tool");
     if(button)event.preventDefault();
 });
 toolbar.addEventListener("click",event=>{
+    if(exporting||loading)return;
     const button=event.target.closest(".tool");
     if(!button)return;
     const command=button.dataset.command,action=button.dataset.action,format=button.dataset.format;
-    if(format){
-        toggleExclusiveInlineFormat(format);
-        return;
-    }
-    if(command){
-        exec(command);
-        return;
-    }
+    if(format){toggleExclusiveInlineFormat(format);return;}
+    if(command){exec(command);return;}
     if(!action)return;
     switch(action){
         case "paragraph":formatBlock("p");break;
@@ -366,12 +340,10 @@ toolbar.addEventListener("click",event=>{
         case "horizontalRule":exec("insertHorizontalRule");break;
     }
 });
-
 function getInlineCode(){return closestElement("code.inline-code");}
 function unwrapInlineCode(code){unwrapInlineElement(code);}
 function toggleInlineCode(){toggleExclusiveInlineFormat("code");}
 inlineCodeButton.addEventListener("click",toggleInlineCode);
-
 function getCodeBlock(){return closestElement("pre.code-block");}
 function getCodeElement(){return closestElement("pre.code-block code");}
 function removeCodeBlock(pre){
@@ -391,6 +363,7 @@ function removeCodeBlock(pre){
     updateStatus();
 }
 function enterCodeBlock(){
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     const selection=window.getSelection();
@@ -402,9 +375,8 @@ function enterCodeBlock(){
         block.innerHTML="<br>";
         editor.appendChild(block);
     }
-    const pre=document.createElement("pre");
+    const pre=document.createElement("pre"),code=document.createElement("code");
     pre.className="code-block";
-    const code=document.createElement("code");
     code.textContent=block.textContent||"";
     pre.appendChild(code);
     block.replaceWith(pre);
@@ -414,19 +386,16 @@ function enterCodeBlock(){
     updateStatus();
 }
 function toggleCodeBlock(){
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     const existing=getCodeBlock();
-    if(existing){
-        removeCodeBlock(existing);
-        return;
-    }
+    if(existing){removeCodeBlock(existing);return;}
     enterCodeBlock();
 }
 codeBlockButton.addEventListener("click",toggleCodeBlock);
-
 editor.addEventListener("keydown",event=>{
-    if(event.key!=="Enter")return;
+    if(exporting||loading||event.key!=="Enter")return;
     const code=getCodeElement();
     if(!code)return;
     event.preventDefault();
@@ -444,14 +413,12 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 });
-
 function clearInlineFormattingFromBlock(block){
     if(!block||!editor.contains(block))return;
-    const inlineElements=block.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR);
-    [...inlineElements].forEach(unwrapInlineElement);
+    [...block.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)].forEach(unwrapInlineElement);
 }
 editor.addEventListener("keydown",event=>{
-    if(event.key!=="Enter"||event.shiftKey)return;
+    if(exporting||loading||event.key!=="Enter"||event.shiftKey)return;
     if(getCurrentNode()?.closest("pre.code-block"))return;
     const current=getCurrentNode(),heading=current?.closest("h1,h2,h3,h4,h5,h6");
     if(!heading||!editor.contains(heading))return;
@@ -465,15 +432,15 @@ editor.addEventListener("keydown",event=>{
     updateStatus();
 });
 editor.addEventListener("keydown",event=>{
-    if(event.key!=="Enter"||event.shiftKey||event.defaultPrevented)return;
+    if(exporting||loading||event.key!=="Enter"||event.shiftKey||event.defaultPrevented)return;
     const current=getCurrentNode();
     if(current?.closest("pre.code-block"))return;
     const oldBlock=current?.closest("p,blockquote,li");
     if(!oldBlock)return;
     requestAnimationFrame(()=>{
+        if(loading)return;
         const newCurrent=getCurrentNode(),newBlock=newCurrent?.closest("p,blockquote,li");
-        if(!newBlock||!editor.contains(newBlock))return;
-        if(newBlock===oldBlock)return;
+        if(!newBlock||!editor.contains(newBlock)||newBlock===oldBlock)return;
         clearInlineFormattingFromBlock(newBlock);
         saveSelection();
         normalizeEditor();
@@ -481,16 +448,15 @@ editor.addEventListener("keydown",event=>{
         updateStatus();
     });
 });
-
 clearFormatButton.addEventListener("click",()=>{
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount)return;
     document.execCommand("removeFormat",false,null);
     const range=selection.getRangeAt(0);
-    const codes=editor.querySelectorAll("code.inline-code");
-    codes.forEach(code=>{
+    editor.querySelectorAll("code.inline-code").forEach(code=>{
         if(range.intersectsNode(code))unwrapInlineCode(code);
     });
     saveSelection();
@@ -498,9 +464,9 @@ clearFormatButton.addEventListener("click",()=>{
     updateToolbarState();
     updateStatus();
 });
-
 const linkModal=document.getElementById("linkModal"),linkUrl=document.getElementById("linkUrl"),linkText=document.getElementById("linkText"),cancelLink=document.getElementById("cancelLink"),applyLink=document.getElementById("applyLink"),linkButton=document.getElementById("linkButton"),unlinkButton=document.getElementById("unlinkButton");
 function openLinkModal(){
+    if(exporting||loading)return;
     saveSelection();
     const selection=window.getSelection();
     linkText.value=selection?.toString()||"";
@@ -512,6 +478,7 @@ function closeLinkModal(){linkModal.classList.remove("open");}
 linkButton.addEventListener("click",openLinkModal);
 cancelLink.addEventListener("click",closeLinkModal);
 applyLink.addEventListener("click",()=>{
+    if(exporting||loading)return;
     restoreSelection();
     editor.focus();
     const url=linkUrl.value.trim();
@@ -536,17 +503,22 @@ applyLink.addEventListener("click",()=>{
     updateToolbarState();
     updateStatus();
 });
-unlinkButton.addEventListener("click",()=>{exec("unlink");});
-
+unlinkButton.addEventListener("click",()=>{if(!exporting&&!loading)exec("unlink");});
 let selectedImage=null;
 function nextImageId(){
     const images=editor.querySelectorAll("p.md-image img");
-    return `evidencia_${String(images.length+1).padStart(3,"0")}`;
+    let max=0;
+    images.forEach(image=>{
+        const match=(image.id||"").match(/^evidencia_(\d+)$/);
+        if(match)max=Math.max(max,Number(match[1]));
+    });
+    return `evidencia_${String(max+1).padStart(3,"0")}`;
 }
 function insertImageFile(file){
-    if(!file||!file.type.startsWith("image/"))return;
+    if(exporting||loading||!file||!file.type.startsWith("image/"))return;
     const reader=new FileReader();
     reader.onload=event=>{
+        if(exporting||loading)return;
         const id=nextImageId(),wrapper=document.createElement("p");
         wrapper.className="md-image";
         wrapper.id=id;
@@ -568,16 +540,14 @@ function insertImageFile(file){
             paragraph.innerHTML="<br>";
             wrapper.after(paragraph);
             placeCaretAtStart(paragraph);
-        }else{
-            editor.appendChild(wrapper);
-        }
+        }else editor.appendChild(wrapper);
         saveSelection();
         updateStatus();
     };
     reader.readAsDataURL(file);
 }
-
 editor.addEventListener("paste",event=>{
+    if(exporting||loading)return;
     const clipboard=event.clipboardData;
     if(!clipboard)return;
     const images=[...clipboard.items].filter(item=>item.kind==="file"&&item.type.startsWith("image/"));
@@ -588,33 +558,32 @@ editor.addEventListener("paste",event=>{
         if(file)insertImageFile(file);
     });
 },true);
-
 editor.addEventListener("dragover",event=>{
+    if(exporting||loading)return;
     const files=[...event.dataTransfer.files];
     if(files.some(file=>file.type.startsWith("image/")))event.preventDefault();
 });
 editor.addEventListener("drop",event=>{
+    if(exporting||loading)return;
     const files=[...event.dataTransfer.files],images=files.filter(file=>file.type.startsWith("image/"));
     if(!images.length)return;
     event.preventDefault();
     images.forEach(insertImageFile);
 });
-
 editor.addEventListener("click",event=>{
-    if(event.target.tagName!=="IMG")return;
+    if(exporting||loading||event.target.tagName!=="IMG")return;
     const image=event.target;
     if(!image.closest("p.md-image"))return;
     openImageModal(image);
 });
-
 const imageModal=document.getElementById("imageModal"),imageSizeMode=document.getElementById("imageSizeMode"),imageSizeValue=document.getElementById("imageSizeValue"),imageSizeValueContainer=document.getElementById("imageSizeValueContainer"),imageAlt=document.getElementById("imageAlt"),applyImage=document.getElementById("applyImage"),cancelImage=document.getElementById("cancelImage"),removeImage=document.getElementById("removeImage");
 function openImageModal(image){
+    if(exporting||loading)return;
     selectedImage=image;
     image.classList.add("selected-image");
     const width=image.style.width;
-    if(!width||width==="auto"){
-        imageSizeMode.value="auto";
-    }else if(width.endsWith("%")){
+    if(!width||width==="auto")imageSizeMode.value="auto";
+    else if(width.endsWith("%")){
         imageSizeMode.value="percent";
         imageSizeValue.value=parseFloat(width);
     }else if(width.endsWith("px")){
@@ -647,15 +616,11 @@ function updateImageSizeInput(){
 imageSizeMode.addEventListener("change",updateImageSizeInput);
 cancelImage.addEventListener("click",closeImageModal);
 applyImage.addEventListener("click",()=>{
-    if(!selectedImage)return;
+    if(!selectedImage||exporting||loading)return;
     const mode=imageSizeMode.value,value=parseFloat(imageSizeValue.value);
-    if(mode==="auto"){
-        selectedImage.style.width="auto";
-    }else if(mode==="percent"&&Number.isFinite(value)){
-        selectedImage.style.width=`${Math.min(100,Math.max(10,value))}%`;
-    }else if(mode==="px"&&Number.isFinite(value)){
-        selectedImage.style.width=`${Math.max(50,value)}px`;
-    }
+    if(mode==="auto")selectedImage.style.width="auto";
+    else if(mode==="percent"&&Number.isFinite(value))selectedImage.style.width=`${Math.min(100,Math.max(10,value))}%`;
+    else if(mode==="px"&&Number.isFinite(value))selectedImage.style.width=`${Math.max(50,value)}px`;
     selectedImage.alt=imageAlt.value;
     closeImageModal();
     updateStatus();
@@ -669,7 +634,6 @@ removeImage.addEventListener("click",()=>{
     synchronizeImageIds();
     updateStatus();
 });
-
 function synchronizeImageIds(){
     const wrappers=editor.querySelectorAll("p.md-image");
     wrappers.forEach((wrapper,index)=>{
@@ -680,22 +644,16 @@ function synchronizeImageIds(){
         if(!image.style.width)image.style.width="80%";
     });
 }
-
 function updateToolbarState(){
+    if(exporting||loading)return;
     const selection=window.getSelection();
-    let range=null;
-    if(selection&&selection.rangeCount)range=selection.getRangeAt(0);
+    const range=selection&&selection.rangeCount?selection.getRangeAt(0):null;
     toolbar.querySelectorAll(".tool[data-format]").forEach(button=>{
-        const format=button.dataset.format,active=range&&selectionFullyInside(format,range);
-        button.classList.toggle("active",!!active);
+        const format=button.dataset.format;
+        button.classList.toggle("active",!!(range&&selectionFullyInside(format,range)));
     });
-    const inlineCodeActive=range&&selectionFullyInside("code.inline-code",range);
-    inlineCodeButton.classList.toggle("active",!!inlineCodeActive);
+    inlineCodeButton.classList.toggle("active",!!(range&&selectionFullyInside("code.inline-code",range)));
     codeBlockButton.classList.toggle("active",!!getCodeBlock());
-    const left=toolbar.querySelector('[data-command="justifyLeft"]'),center=toolbar.querySelector('[data-command="justifyCenter"]'),right=toolbar.querySelector('[data-command="justifyRight"]');
-    if(left)left.classList.toggle("active",document.queryCommandState("justifyLeft"));
-    if(center)center.classList.toggle("active",document.queryCommandState("justifyCenter"));
-    if(right)right.classList.toggle("active",document.queryCommandState("justifyRight"));
     const node=getCurrentNode();
     if(!node)return;
     const block=node.closest("h1,h2,h3,h4,h5,h6,blockquote,p,pre,li");
@@ -719,8 +677,8 @@ function updateToolbarState(){
         button.classList.toggle("active",active);
     });
 }
-
 function updateStatus(){
+    if(exporting||loading)return;
     const text=editor.innerText.replace(/\s+/g," ").trim(),words=text?text.split(/\s+/).length:0;
     wordStatus.textContent=`${words}${words===1?" palabra":" palabras"}`;
     charStatus.textContent=`${text.length}${text.length===1?" carácter":" caracteres"}`;
@@ -734,13 +692,8 @@ function updateStatus(){
         return;
     }
     const block=node.closest("h1,h2,h3,h4,h5,h6,blockquote,pre,p,li");
-    if(!block){
-        formatStatus.textContent="Normal";
-        return;
-    }
-    formatStatus.textContent=block.tagName==="BLOCKQUOTE"?"Cita":block.tagName;
+    formatStatus.textContent=block?(block.tagName==="BLOCKQUOTE"?"Cita":block.tagName):"Normal";
 }
-
 function placeCaretAtEnd(element){
     if(!element)return;
     const range=document.createRange();
@@ -761,10 +714,8 @@ function placeCaretAtStart(element){
     selection.addRange(range);
     editor.focus();
 }
-
 function normalizeExclusiveFormatting(){
-    const elements=[...editor.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)];
-    elements.forEach(element=>{
+    [...editor.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)].forEach(element=>{
         let parent=element.parentElement;
         while(parent&&parent!==editor){
             if(isExclusiveInlineElement(parent)){
@@ -786,14 +737,12 @@ function normalizeEditor(){
     normalizeExclusiveFormatting();
     synchronizeImageIds();
 }
-
 function escapeAttribute(value){
     return String(value).replace(/&/g,"&amp;").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 function escapeMarkdownText(value){
-    return String(value).replace(/\\/g,"\\\\").replace(/([\\`*_[\]{}()#+\-.!>])/g,"\\$1");
+    return String(value).replace(/\\/g,"\\\\").replace(/([\\`\*\_#[\]{}()+\-.!>])/g,"\\$1");
 }
-
 function childrenToMarkdown(node){
     if(!node)return "";
     return [...node.childNodes].map(inlineToMarkdown).join("");
@@ -812,13 +761,11 @@ function inlineToMarkdown(node){
     if(tag==="span"||tag==="font")return childrenToMarkdown(node);
     return childrenToMarkdown(node);
 }
-
 function isMarkdownBlockElement(node){
     if(!node||node.nodeType!==Node.ELEMENT_NODE)return false;
     const tag=node.tagName.toLowerCase();
     return /^h[1-6]$/.test(tag)||tag==="p"||tag==="div"||tag==="blockquote"||tag==="ul"||tag==="ol"||tag==="li"||tag==="pre"||tag==="hr";
 }
-
 function serializeMixedChildren(node){
     if(!node)return "";
     const output=[];
@@ -829,15 +776,11 @@ function serializeMixedChildren(node){
         }
         if(child.nodeType!==Node.ELEMENT_NODE)continue;
         const tag=child.tagName.toLowerCase();
-        if(tag==="ul"||tag==="ol"||tag==="blockquote"||tag==="pre"||tag==="hr"||/^h[1-6]$/.test(tag)||tag==="p"||tag==="div"){
-            output.push(blockToMarkdown(child));
-            continue;
-        }
-        output.push(inlineToMarkdown(child));
+        if(tag==="ul"||tag==="ol"||tag==="blockquote"||tag==="pre"||tag==="hr"||/^h[1-6]$/.test(tag)||tag==="p"||tag==="div")output.push(blockToMarkdown(child));
+        else output.push(inlineToMarkdown(child));
     }
     return output.join("");
 }
-
 function listItemInlineMarkdown(li){
     if(!li)return "";
     const output=[];
@@ -849,19 +792,15 @@ function listItemInlineMarkdown(li){
         if(child.nodeType!==Node.ELEMENT_NODE)continue;
         const tag=child.tagName.toLowerCase();
         if(tag==="ul"||tag==="ol")continue;
-        if(tag==="p"||tag==="div"){
-            output.push(serializeMixedChildren(child).trim());
-            continue;
-        }
-        output.push(inlineToMarkdown(child));
+        if(tag==="p"||tag==="div")output.push(serializeMixedChildren(child).trim());
+        else output.push(inlineToMarkdown(child));
     }
     return output.join("").trim();
 }
 function serializeNestedList(list,indent="    "){
     const markdown=blockToMarkdown(list).trimEnd();
-    return markdown.split("\n").map(line=>line?indent+line:line).join("\n");
+    return markdown.split("\n").map(line=>line?indent+line:"").join("\n");
 }
-
 function blockToMarkdown(node){
     if(!node)return "";
     if(node.nodeType===Node.TEXT_NODE)return escapeMarkdownText(node.nodeValue.replace(/\u200B/g,""));
@@ -870,101 +809,375 @@ function blockToMarkdown(node){
     if(tag==="p"&&node.classList.contains("md-image")){
         const image=node.querySelector("img");
         if(!image)return "";
-        const id=image.id||node.id||"evidencia_001";
-        const alt=escapeAttribute(image.alt||"");
-        const src=image.getAttribute("src")||"";
+        const id=image.id||node.id||"evidencia_001",alt=escapeAttribute(image.alt||""),src=image.getAttribute("src")||"";
         return `<p align='center' id='${id}'>
     <img
         id='${id}'
         alt='${alt}'
         src='${src}'>
 </p>
-
 `;
     }
     if(/^h[1-6]$/.test(tag)){
-        const level=Number(tag.substring(1));
         const content=serializeMixedChildren(node).trim();
-        return `${"#".repeat(level)} ${content}\n\n`;
+        return `${"#".repeat(Number(tag.substring(1)))} ${content}\n\n`;
     }
     if(tag==="p"){
         const content=serializeMixedChildren(node).trim();
-        if(!content)return "\n";
-        return `${content}\n\n`;
+        return content?`${content}\n\n`:"\n";
     }
     if(tag==="blockquote"){
         const content=serializeMixedChildren(node).trim();
         if(!content)return ">\n\n";
-        const lines=content.split("\n");
-        return lines.map(line=>line.length?`> ${line}`:">").join("\n")+"\n\n";
+        return content.split("\n").map(line=>line.length?`> ${line}`:">").join("\n")+"\n\n";
     }
     if(tag==="hr")return "---\n\n";
     if(tag==="pre"&&node.classList.contains("code-block")){
         const content=node.textContent.replace(/\u200B/g,"").replace(/\n$/,"");
-        return `\`\`\`
-${content}
-\`\`\`
-
-`;
+        return `\`\`\`\n${content}\n\`\`\`\n`;
     }
-    if(tag==="ul"){
-        const items=[...node.children].filter(child=>child.tagName.toLowerCase()==="li");
-        if(!items.length)return "";
-        const lines=[];
-        items.forEach(li=>{
-            const content=listItemInlineMarkdown(li);
-            lines.push(`- ${content}`);
-            const nestedLists=[...li.children].filter(child=>{
-                const childTag=child.tagName.toLowerCase();
-                return childTag==="ul"||childTag==="ol";
-            });
-            nestedLists.forEach(nested=>lines.push(serializeNestedList(nested)));
-        });
-        return lines.join("\n")+"\n\n";
-    }
-    if(tag==="ol"){
-        const items=[...node.children].filter(child=>child.tagName.toLowerCase()==="li");
+    if(tag==="ul"||tag==="ol"){
+        const ordered=tag==="ol",items=[...node.children].filter(child=>child.tagName.toLowerCase()==="li");
         if(!items.length)return "";
         const lines=[];
         items.forEach((li,index)=>{
             const content=listItemInlineMarkdown(li);
-            lines.push(`${index+1}. ${content}`);
-            const nestedLists=[...li.children].filter(child=>{
+            lines.push(ordered?`${index+1}. ${content}`:`- ${content}`);
+            [...li.children].filter(child=>{
                 const childTag=child.tagName.toLowerCase();
                 return childTag==="ul"||childTag==="ol";
-            });
-            nestedLists.forEach(nested=>lines.push(serializeNestedList(nested)));
+            }).forEach(nested=>lines.push(serializeNestedList(nested)));
         });
         return lines.join("\n")+"\n\n";
     }
     if(tag==="li")return listItemInlineMarkdown(node)+"\n\n";
     if(tag==="pre"){
         const content=node.textContent.replace(/\u200B/g,"").replace(/\n$/,"");
-        return `\`\`\`
-${content}
-\`\`\`
-
-`;
+        return `\`\`\`\n${content}\n\`\`\`\n`;
     }
-    if(tag==="div")return serializeMixedChildren(node);
     return serializeMixedChildren(node);
 }
-
-function htmlToMarkdown(){
-    synchronizeImageIds();
-    const parts=[];
-    for(const node of editor.childNodes){
-        if(node.nodeType===Node.TEXT_NODE){
-            const text=escapeMarkdownText(node.nodeValue.replace(/\u200B/g,"").trim());
-            if(text)parts.push(`${text}\n\n`);
+function utf8Length(text){
+    let bytes=0;
+    for(let i=0;i<text.length;i++){
+        const code=text.charCodeAt(i);
+        if(code>=0xD800&&code<=0xDBFF&&i+1<text.length){
+            const next=text.charCodeAt(++i);
+            if(next>=0xDC00&&next<=0xDFFF){bytes+=4;continue;}
+        }
+        bytes+=code<=0x7F?1:code<=0x7FF?2:3;
+    }
+    return bytes;
+}
+function escapedMarkdownByteLength(text){
+    let bytes=0;
+    const escaped=new Set(["\\","`","*","_","#","[","]","{","}","(",")","+","-",".","!"]);
+    for(let i=0;i<text.length;i++){
+        const char=text[i];
+        if(char==="\u200B")continue;
+        if(char==="\u00A0"){
+            bytes++;
             continue;
         }
-        if(node.nodeType!==Node.ELEMENT_NODE)continue;
-        parts.push(blockToMarkdown(node));
+        if(escaped.has(char))bytes++;
+        const code=text.charCodeAt(i);
+        if(code>=0xD800&&code<=0xDBFF&&i+1<text.length){
+            const next=text.charCodeAt(++i);
+            if(next>=0xDC00&&next<=0xDFFF){bytes+=4;continue;}
+        }
+        bytes+=code<=0x7F?1:code<=0x7FF?2:3;
     }
-    return parts.join("").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()+"\n";
+    return bytes;
 }
-
+function estimateInlineBytes(node){
+    if(!node)return 0;
+    if(node.nodeType===Node.TEXT_NODE)return escapedMarkdownByteLength(node.nodeValue);
+    if(node.nodeType!==Node.ELEMENT_NODE)return 0;
+    const tag=node.tagName.toLowerCase();
+    if(tag==="br")return 1;
+    let content=0;
+    for(const child of node.childNodes)content+=estimateInlineBytes(child);
+    if(tag==="strong"||tag==="b")return 4+content;
+    if(tag==="em"||tag==="i")return 2+content;
+    if(tag==="u")return 7+content;
+    if(tag==="s"||tag==="strike"||tag==="del")return 4+content;
+    if(tag==="code"&&node.classList.contains("inline-code"))return 2+utf8Length(node.textContent.replace(/\u200B/g,""));
+    if(tag==="a")return 4+utf8Length(node.getAttribute("href")||"")+content;
+    return content;
+}
+function estimateBlockBytes(node){
+    if(!node)return 0;
+    if(node.nodeType===Node.TEXT_NODE)return escapedMarkdownByteLength(node.nodeValue);
+    if(node.nodeType!==Node.ELEMENT_NODE)return 0;
+    const tag=node.tagName.toLowerCase();
+    if(tag==="p"&&node.classList.contains("md-image")){
+        const image=node.querySelector("img");
+        if(!image)return 0;
+        const id=image.id||node.id||"evidencia_001",alt=escapeAttribute(image.alt||""),src=image.getAttribute("src")||"";
+        return utf8Length(`<p align='center' id='${id}'>
+    <img
+        id='${id}'
+        alt='${alt}'
+        src=''>${src}
+</p>
+`);
+    }
+    if(/^h[1-6]$/.test(tag))return Number(tag.substring(1))+1+estimateInlineBytes(node)+2;
+    if(tag==="p"){
+        const content=estimateInlineBytes(node);
+        return content?content+2:1;
+    }
+    if(tag==="blockquote"){
+        const content=estimateInlineBytes(node);
+        return content?content+4:3;
+    }
+    if(tag==="hr")return 4;
+    if(tag==="pre")return 8+utf8Length(node.textContent.replace(/\u200B/g,"").replace(/\n$/,""));
+    if(tag==="ul"||tag==="ol"){
+        let total=0,index=1;
+        for(const li of [...node.children].filter(child=>child.tagName.toLowerCase()==="li")){
+            const content=estimateInlineBytes(li);
+            total+=(tag==="ol"?String(index++).length+2:2)+content+1;
+            for(const nested of [...li.children].filter(child=>{
+                const nestedTag=child.tagName.toLowerCase();
+                return nestedTag==="ul"||nestedTag==="ol";
+            }))total+=estimateBlockBytes(nested)+4;
+        }
+        return total+1;
+    }
+    if(tag==="li")return estimateInlineBytes(node)+2;
+    return estimateInlineBytes(node);
+}
+function estimateMarkdownBytes(){
+    synchronizeImageIds();
+    let total=0;
+    for(const node of editor.childNodes){
+        if(node.nodeType===Node.TEXT_NODE){
+            const text=node.nodeValue.replace(/\u200B/g,"").trim();
+            if(text)total+=escapedMarkdownByteLength(text)+2;
+        }else if(node.nodeType===Node.ELEMENT_NODE)total+=estimateBlockBytes(node);
+    }
+    return Math.max(total,1);
+}
+function normalizeMarkdownChunk(text,state,final=false){
+    if(!text)return "";
+    const combined=state.tail+text;
+    state.tail="";
+    let output=combined.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n");
+    if(!final){
+        const keep=Math.min(2,output.length);
+        state.tail=output.slice(-keep);
+        output=output.slice(0,-keep);
+    }
+    return output;
+}
+async function* markdownChunks(){
+    synchronizeImageIds();
+    const state={tail:""};
+    for(const node of editor.childNodes){
+        let chunk="";
+        if(node.nodeType===Node.TEXT_NODE){
+            const text=node.nodeValue.replace(/\u200B/g,"").trim();
+            if(text)chunk=`${escapeMarkdownText(text)}\n\n`;
+        }else if(node.nodeType===Node.ELEMENT_NODE)chunk=blockToMarkdown(node);
+        if(!chunk)continue;
+        const normalized=normalizeMarkdownChunk(chunk,state,false);
+        if(normalized)yield normalized;
+        await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    let finalChunk=normalizeMarkdownChunk("",state,true);
+    finalChunk=finalChunk.replace(/\n{3,}/g,"\n\n").trim();
+    if(finalChunk)yield `${finalChunk}\n`;
+}
+async function htmlToMarkdown(){
+    let result="";
+    for await(const chunk of markdownChunks())result+=chunk;
+    return result;
+}
+function createExportOverlay(){
+    if(document.getElementById("markdownExportOverlay"))return;
+    const style=document.createElement("style");
+    style.id="markdownExportOverlayStyle";
+    style.textContent=`
+#markdownExportOverlay{position:fixed;inset:0;z-index:999999;background:rgba(8,10,14,.78);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s ease}
+#markdownExportOverlay.open{opacity:1;pointer-events:all}
+#markdownExportPanel{width:min(520px,calc(100vw - 40px));box-sizing:border-box;background:#151820;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:30px;box-shadow:0 25px 80px rgba(0,0,0,.45);font-family:inherit;color:#fff}
+#markdownExportTitle{font-size:21px;font-weight:700;margin:0 0 8px}
+#markdownExportStatus{font-size:13px;opacity:.65;margin-bottom:24px}
+#markdownExportPercent{font-size:38px;font-weight:700;text-align:center;margin-bottom:18px;letter-spacing:-1px}
+#markdownExportTrack{height:10px;background:rgba(255,255,255,.09);border-radius:99px;overflow:hidden}
+#markdownExportBar{height:100%;width:0%;background:currentColor;border-radius:99px;transition:width .08s linear}
+#markdownExportInfo{display:flex;justify-content:space-between;gap:15px;margin-top:12px;font-size:12px;opacity:.65}
+#markdownExportCancel{display:block;width:100%;margin-top:24px;padding:11px 16px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.05);color:inherit;cursor:pointer;font:inherit}
+#markdownExportCancel:hover{background:rgba(255,255,255,.1)}
+#markdownExportCancel:disabled{opacity:.45;cursor:not-allowed}
+`;
+    document.head.appendChild(style);
+    const overlay=document.createElement("div");
+    overlay.id="markdownExportOverlay";
+    overlay.innerHTML=`
+<div id="markdownExportPanel" role="dialog" aria-modal="true">
+    <div id="markdownExportTitle">Exportando documento</div>
+    <div id="markdownExportStatus">Preparando archivo...</div>
+    <div id="markdownExportPercent">0%</div>
+    <div id="markdownExportTrack"><div id="markdownExportBar"></div></div>
+    <div id="markdownExportInfo"><span id="markdownExportWritten">0 B</span><span id="markdownExportTotal">Calculando...</span></div>
+    <button id="markdownExportCancel" type="button">Cancelar exportación</button>
+</div>`;
+    document.body.appendChild(overlay);
+    document.getElementById("markdownExportCancel").addEventListener("click",cancelMarkdownExport);
+}
+function showExportOverlay(totalBytes){
+    createExportOverlay();
+    exportCancelRequested=false;
+    const overlay=document.getElementById("markdownExportOverlay");
+    const percent=document.getElementById("markdownExportPercent"),bar=document.getElementById("markdownExportBar"),written=document.getElementById("markdownExportWritten"),total=document.getElementById("markdownExportTotal"),status=document.getElementById("markdownExportStatus"),cancel=document.getElementById("markdownExportCancel");
+    status.textContent="Escribiendo archivo por partes...";
+    percent.textContent="0%";
+    bar.style.width="0%";
+    written.textContent="0 B";
+    total.textContent=formatBytes(totalBytes);
+    cancel.disabled=false;
+    cancel.textContent="Cancelar exportación";
+    overlay.classList.add("open");
+}
+function updateExportProgress(writtenBytes,totalBytes){
+    const percent=Math.min(100,totalBytes>0?(writtenBytes/totalBytes)*100:0),rounded=percent>=99.95?100:Math.floor(percent*100)/100;
+    const bar=document.getElementById("markdownExportBar"),percentElement=document.getElementById("markdownExportPercent"),written=document.getElementById("markdownExportWritten");
+    if(bar)bar.style.width=`${percent}%`;
+    if(percentElement)percentElement.textContent=`${rounded.toFixed(rounded<10?1:0)}%`;
+    if(written)written.textContent=formatBytes(writtenBytes);
+}
+function setExportStatus(text){
+    const element=document.getElementById("markdownExportStatus");
+    if(element)element.textContent=text;
+}
+function hideExportOverlay(){
+    const overlay=document.getElementById("markdownExportOverlay");
+    if(overlay)overlay.classList.remove("open");
+}
+function setExportFinished(){
+    const percent=document.getElementById("markdownExportPercent"),bar=document.getElementById("markdownExportBar"),cancel=document.getElementById("markdownExportCancel");
+    if(percent)percent.textContent="100%";
+    if(bar)bar.style.width="100%";
+    if(cancel){
+        cancel.disabled=true;
+        cancel.textContent="Exportación completada";
+    }
+    setExportStatus("Archivo guardado correctamente");
+}
+function setExportCancelled(){
+    const cancel=document.getElementById("markdownExportCancel");
+    if(cancel){
+        cancel.disabled=true;
+        cancel.textContent="Exportación cancelada";
+    }
+    setExportStatus("Exportación cancelada");
+}
+function setExportError(){
+    const cancel=document.getElementById("markdownExportCancel");
+    if(cancel){
+        cancel.disabled=true;
+        cancel.textContent="Cerrar";
+    }
+    setExportStatus("Ocurrió un error al guardar el archivo");
+}
+function cancelMarkdownExport(){
+    if(!exporting)return;
+    exportCancelRequested=true;
+    const cancel=document.getElementById("markdownExportCancel");
+    if(cancel){
+        cancel.disabled=true;
+        cancel.textContent="Cancelando...";
+    }
+}
+function formatBytes(bytes){
+    if(!Number.isFinite(bytes)||bytes<=0)return"0 B";
+    const units=["B","KB","MB","GB","TB"],index=Math.min(Math.floor(Math.log(bytes)/Math.log(1024)),units.length-1),value=bytes/Math.pow(1024,index);
+    return `${value>=100?value.toFixed(0):value>=10?value.toFixed(1):value.toFixed(2)} ${units[index]}`;
+}
+function lockEditorForExport(){
+    editor.setAttribute("contenteditable","false");
+    toolbar.setAttribute("aria-disabled","true");
+    if(saveButton)saveButton.setAttribute("aria-disabled","true");
+    if(loadButton)loadButton.setAttribute("aria-disabled","true");
+    if(inlineCodeButton)inlineCodeButton.setAttribute("aria-disabled","true");
+    if(codeBlockButton)codeBlockButton.setAttribute("aria-disabled","true");
+    if(clearFormatButton)clearFormatButton.setAttribute("aria-disabled","true");
+}
+function unlockEditorAfterExport(){
+    editor.setAttribute("contenteditable","true");
+    toolbar.removeAttribute("aria-disabled");
+    if(saveButton)saveButton.removeAttribute("aria-disabled");
+    if(loadButton)loadButton.removeAttribute("aria-disabled");
+    if(inlineCodeButton)inlineCodeButton.removeAttribute("aria-disabled");
+    if(codeBlockButton)codeBlockButton.removeAttribute("aria-disabled");
+    updateToolbarState();
+    updateStatus();
+}
+function createLoadOverlay(){
+    if(document.getElementById("markdownLoadOverlay"))return;
+    const style=document.createElement("style");
+    style.id="markdownLoadOverlayStyle";
+    style.textContent=`
+#markdownLoadOverlay{position:fixed;inset:0;z-index:1000000;background:rgba(8,10,14,.78);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s ease}
+#markdownLoadOverlay.open{opacity:1;pointer-events:all}
+#markdownLoadPanel{width:min(420px,calc(100vw - 40px));box-sizing:border-box;background:#151820;border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:30px;box-shadow:0 25px 80px rgba(0,0,0,.45);font-family:inherit;color:#fff;text-align:center}
+#markdownLoadTitle{font-size:21px;font-weight:700;margin-bottom:8px}
+#markdownLoadStatus{font-size:13px;opacity:.65;margin-bottom:24px}
+#markdownLoadSpinner{width:42px;height:42px;margin:0 auto;border:4px solid rgba(255,255,255,.12);border-top-color:currentColor;border-radius:50%;animation:markdownLoadSpin .75s linear infinite}
+@keyframes markdownLoadSpin{to{transform:rotate(360deg)}}
+`;
+    document.head.appendChild(style);
+    const overlay=document.createElement("div");
+    overlay.id="markdownLoadOverlay";
+    overlay.innerHTML=`
+<div id="markdownLoadPanel" role="dialog" aria-modal="true">
+    <div id="markdownLoadTitle">Cargando documento</div>
+    <div id="markdownLoadStatus">Procesando Markdown...</div>
+    <div id="markdownLoadSpinner"></div>
+</div>`;
+    document.body.appendChild(overlay);
+}
+function showLoadOverlay(){
+    createLoadOverlay();
+    const overlay=document.getElementById("markdownLoadOverlay"),status=document.getElementById("markdownLoadStatus");
+    if(status)status.textContent="Procesando Markdown...";
+    overlay.classList.add("open");
+}
+function setLoadStatus(text){
+    const status=document.getElementById("markdownLoadStatus");
+    if(status)status.textContent=text;
+}
+function hideLoadOverlay(){
+    const overlay=document.getElementById("markdownLoadOverlay");
+    if(overlay)overlay.classList.remove("open");
+}
+function lockEditorForLoad(){
+    editor.setAttribute("contenteditable","false");
+    editor.setAttribute("aria-busy","true");
+    toolbar.setAttribute("aria-disabled","true");
+    if(saveButton)saveButton.setAttribute("aria-disabled","true");
+    if(loadButton)loadButton.setAttribute("aria-disabled","true");
+    if(inlineCodeButton)inlineCodeButton.setAttribute("aria-disabled","true");
+    if(codeBlockButton)codeBlockButton.setAttribute("aria-disabled","true");
+    if(clearFormatButton)clearFormatButton.setAttribute("aria-disabled","true");
+    document.body.classList.add("markdown-loading");
+}
+function unlockEditorAfterLoad(){
+    editor.setAttribute("contenteditable","true");
+    editor.removeAttribute("aria-busy");
+    toolbar.removeAttribute("aria-disabled");
+    if(saveButton)saveButton.removeAttribute("aria-disabled");
+    if(loadButton)loadButton.removeAttribute("aria-disabled");
+    if(inlineCodeButton)inlineCodeButton.removeAttribute("aria-disabled");
+    if(codeBlockButton)codeBlockButton.removeAttribute("aria-disabled");
+    if(clearFormatButton)clearFormatButton.removeAttribute("aria-disabled");
+    document.body.classList.remove("markdown-loading");
+}
+function nextFrame(){
+    return new Promise(resolve=>requestAnimationFrame(()=>resolve()));
+}
 function escapeHTML(text){
     const div=document.createElement("div");
     div.textContent=text;
@@ -972,16 +1185,15 @@ function escapeHTML(text){
 }
 function markdownInlineToHTML(text){
     let result=escapeHTML(text);
-    result=result.replace(/\\([\\`*_[\]{}()#+\-.!>])/g,"$1");
-    result=result.replace(/`([^`]+)`/g,'<code class="inline-code">$1</code>');
+    result=result.replace(/\\([\\`\*\_#[\]{}()+\-.!>])/g,"$1");
+    result=result.replace(/\\`([^\\`]+)\\`/g,'<code class="inline-code">$1</code>');
     result=result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
     result=result.replace(/\*\*([^\*]+)\*\*/g,"<strong>$1</strong>");
     result=result.replace(/~~([^\~]+)~~/g,"<s>$1</s>");
     result=result.replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g,"<em>$1</em>");
-    result=result.replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi,"<u>$1</u>");
+    result=result.replace(/<u>([\s\S]*?)<\/u>/gi,"<u>$1</u>");
     return result;
 }
-
 function markdownToHTML(markdown){
     const imageBlocks=[];
     markdown=markdown.replace(/<p\s+align=['"]center['"]\s+id=['"]([^'"]+)['"]>\s*<img\s+id=['"]([^'"]+)['"]\s+alt=['"]([^'"]*)['"]\s+src=['"]([^'"]+)['"]\s*>\s*<\/p>/gi,(_,wrapperId,imageId,alt,src)=>{
@@ -992,18 +1204,10 @@ function markdownToHTML(markdown){
     const lines=markdown.split(/\r?\n/),html=[];
     let i=0;
     while(i<lines.length){
-        const line=lines[i];
-        const imageToken=line.match(/^___IMAGE_BLOCK_(\d+)___$/);
+        const line=lines[i],imageToken=line.match(/^___IMAGE_BLOCK_(\d+)___$/);
         if(imageToken){
             const data=imageBlocks[Number(imageToken[1])];
-            html.push(`
-<p class="md-image" align="center" id="${escapeAttribute(data.wrapperId)}">
-    <img
-        id="${escapeAttribute(data.imageId)}"
-        alt="${escapeAttribute(data.alt)}"
-        src="${data.src}"
-        style="width:80%">
-</p>`);
+            html.push(`<p class="md-image" align="center" id="${escapeAttribute(data.wrapperId)}"><img id="${escapeAttribute(data.imageId)}" alt="${escapeAttribute(data.alt)}" src="${data.src}" style="width:80%"></p>`);
             i++;
             continue;
         }
@@ -1024,8 +1228,7 @@ function markdownToHTML(markdown){
         }
         const heading=line.match(/^(#{1,6})\s+(.+)$/);
         if(heading){
-            const level=heading[1].length;
-            html.push(`<h${level}>${markdownInlineToHTML(heading[2])}</h${level}>`);
+            html.push(`<h${heading[1].length}>${markdownInlineToHTML(heading[2])}</h${heading[1].length}>`);
             i++;
             continue;
         }
@@ -1043,10 +1246,10 @@ function markdownToHTML(markdown){
             html.push(`<blockquote>${quoteLines.map(markdownInlineToHTML).join("<br>")}</blockquote>`);
             continue;
         }
-        if(/^[-*+]\s+/.test(line)){
+        if(/^[-\*+]\s+/.test(line)){
             const items=[];
-            while(i<lines.length&&/^[-*+]\s+/.test(lines[i])){
-                items.push(`<li>${markdownInlineToHTML(lines[i].replace(/^[-*+]\s+/,""))}</li>`);
+            while(i<lines.length&&/^[-\*+]\s+/.test(lines[i])){
+                items.push(`<li>${markdownInlineToHTML(lines[i].replace(/^[-\*+]\s+/,""))}</li>`);
                 i++;
             }
             html.push(`<ul>${items.join("")}</ul>`);
@@ -1063,7 +1266,7 @@ function markdownToHTML(markdown){
         }
         const paragraphLines=[line];
         i++;
-        while(i<lines.length&&lines[i].trim()&&!/^#{1,6}\s+/.test(lines[i])&&!/^```/.test(lines[i])&&!/^[-*+]\s+/.test(lines[i])&&!/^\d+\.\s+/.test(lines[i])&&!/^>/.test(lines[i])&&!/^___IMAGE_BLOCK_\d+___$/.test(lines[i])){
+        while(i<lines.length&&lines[i].trim()&&!/^#{1,6}\s+/.test(lines[i])&&!/^```/.test(lines[i])&&!/^[-\*+]\s+/.test(lines[i])&&!/^\d+\.\s+/.test(lines[i])&&!/^>/.test(lines[i])&&!/^___IMAGE_BLOCK_\d+___$/.test(lines[i])){
             paragraphLines.push(lines[i]);
             i++;
         }
@@ -1071,75 +1274,172 @@ function markdownToHTML(markdown){
     }
     return html.join("\n");
 }
-
-loadButton.addEventListener("click",()=>{fileInput.click();});
+loadButton.addEventListener("click",()=>{
+    if(exporting||loading)return;
+    fileInput.click();
+});
 fileInput.addEventListener("change",async()=>{
+    if(exporting||loading)return;
     const file=fileInput.files?.[0];
     if(!file)return;
+    loading=true;
+    lockEditorForLoad();
+    showLoadOverlay();
+    await nextFrame();
     try{
+        setLoadStatus(`Leyendo ${formatBytes(file.size)}...`);
+        await nextFrame();
         const markdown=await file.text();
+        setLoadStatus("Construyendo documento...");
+        await nextFrame();
         editor.innerHTML=markdownToHTML(markdown);
+        setLoadStatus("Aplicando formato...");
+        await nextFrame();
         normalizeEditor();
+        setLoadStatus("Finalizando...");
+        await nextFrame();
         editor.focus();
         updateToolbarState();
         updateStatus();
+        savedRange=null;
+        await nextFrame();
     }catch(error){
         console.error("Error cargando Markdown:",error);
+    }finally{
+        fileInput.value="";
+        hideLoadOverlay();
+        loading=false;
+        unlockEditorAfterLoad();
+        updateToolbarState();
+        updateStatus();
     }
-    fileInput.value="";
 });
-
 async function saveMarkdown(){
-    const markdown=htmlToMarkdown();
-    if("showSaveFilePicker" in window){
-        try{
-            const handle=await window.showSaveFilePicker({
-                suggestedName:"Markdown.md",
-                types:[{
-                    description:"Archivo Markdown",
-                    accept:{"text/markdown":[".md"]}
-                }]
-            });
+    if(exporting||loading)return;
+    exporting=true;
+    exportCancelRequested=false;
+    lockEditorForExport();
+    await nextFrame();
+    let totalBytes=0;
+    try{
+        totalBytes=estimateMarkdownBytes();
+        showExportOverlay(totalBytes);
+        await nextFrame();
+        if("showSaveFilePicker" in window){
+            let handle=null;
+            try{
+                handle=await window.showSaveFilePicker({
+                    suggestedName:"Markdown.md",
+                    types:[{description:"Archivo Markdown",accept:{"text/markdown":[".md"]}}]
+                });
+            }catch(error){
+                if(error.name==="AbortError"){
+                    exporting=false;
+                    unlockEditorAfterExport();
+                    hideExportOverlay();
+                    return;
+                }
+                throw error;
+            }
             const writable=await handle.createWritable();
-            await writable.write(markdown);
+            exportWritable=writable;
+            let writtenBytes=0;
+            for await(const chunk of markdownChunks()){
+                if(exportCancelRequested){
+                    try{await writable.abort();}catch(error){}
+                    exportWritable=null;
+                    setExportCancelled();
+                    await new Promise(resolve=>setTimeout(resolve,500));
+                    hideExportOverlay();
+                    exporting=false;
+                    unlockEditorAfterExport();
+                    return;
+                }
+                await writable.write(chunk);
+                writtenBytes+=utf8Length(chunk);
+                updateExportProgress(writtenBytes,totalBytes);
+                await new Promise(resolve=>setTimeout(resolve,0));
+            }
+            if(exportCancelRequested){
+                try{await writable.abort();}catch(error){}
+                exportWritable=null;
+                setExportCancelled();
+                await new Promise(resolve=>setTimeout(resolve,500));
+                hideExportOverlay();
+                exporting=false;
+                unlockEditorAfterExport();
+                return;
+            }
             await writable.close();
+            exportWritable=null;
+            updateExportProgress(totalBytes,totalBytes);
+            setExportFinished();
+            await new Promise(resolve=>setTimeout(resolve,650));
+            hideExportOverlay();
+            exporting=false;
+            unlockEditorAfterExport();
             return;
-        }catch(error){
-            if(error.name==="AbortError")return;
         }
+        setExportStatus("Este navegador no permite escritura directa. Generando descarga...");
+        const markdown=await htmlToMarkdown();
+        if(exportCancelRequested){
+            setExportCancelled();
+            await new Promise(resolve=>setTimeout(resolve,500));
+            hideExportOverlay();
+            exporting=false;
+            unlockEditorAfterExport();
+            return;
+        }
+        const blob=new Blob([markdown],{type:"text/markdown;charset=utf-8"}),url=URL.createObjectURL(blob),anchor=document.createElement("a");
+        anchor.href=url;
+        anchor.download="Markdown.md";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+        updateExportProgress(blob.size,blob.size);
+        setExportFinished();
+        await new Promise(resolve=>setTimeout(resolve,650));
+        hideExportOverlay();
+    }catch(error){
+        console.error("Error guardando Markdown:",error);
+        if(exportWritable){
+            try{await exportWritable.abort();}catch(abortError){}
+        }
+        exportWritable=null;
+        if(error.name!=="AbortError"){
+            setExportError();
+            await new Promise(resolve=>setTimeout(resolve,1000));
+        }
+        hideExportOverlay();
+    }finally{
+        exporting=false;
+        exportCancelRequested=false;
+        exportWritable=null;
+        unlockEditorAfterExport();
     }
-    const blob=new Blob([markdown],{type:"text/markdown;charset=utf-8"});
-    const url=URL.createObjectURL(blob);
-    const anchor=document.createElement("a");
-    anchor.href=url;
-    anchor.download="Markdown.md";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(()=>{URL.revokeObjectURL(url);},1000);
 }
 saveButton.addEventListener("click",saveMarkdown);
-
 document.addEventListener("keydown",event=>{
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s"){
         event.preventDefault();
-        saveMarkdown();
+        if(!exporting&&!loading)saveMarkdown();
         return;
     }
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
         event.preventDefault();
-        openLinkModal();
+        if(!exporting&&!loading)openLinkModal();
     }
 });
-
 linkModal.addEventListener("click",event=>{
     if(event.target===linkModal)closeLinkModal();
 });
 imageModal.addEventListener("click",event=>{
     if(event.target===imageModal)closeImageModal();
 });
-
 function initialize(){
+    createExportOverlay();
+    createLoadOverlay();
     normalizeEditor();
     updateToolbarState();
     updateStatus();
