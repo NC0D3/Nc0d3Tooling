@@ -266,28 +266,6 @@ function fragmentHasMeaningfulContent(fragment) {
    SPLIT EXCLUSIVE ANCESTORS AT RANGE
    ============================================================ */
 
-/*
- * IMPORTANT:
- *
- * Esta función era la causa principal del bug.
- *
- * Antes:
- *
- *     <code>texto|</code>
- *
- * terminaba pudiendo convertirse en:
- *
- *     <code>texto</code>
- *     <code></code>
- *     <strong>nuevo</strong>
- *
- * porque se insertaba el clon aunque no hubiera
- * contenido después del cursor.
- *
- * Ahora solamente creamos la segunda mitad
- * cuando realmente existe contenido significativo.
- */
-
 function splitExclusiveAncestorsAtRange(range) {
 
     let node = range.startContainer;
@@ -326,15 +304,6 @@ function splitExclusiveAncestorsAtRange(range) {
                 const tail =
                     tailRange.extractContents();
 
-                /*
-                 * SOLUCIÓN:
-                 *
-                 * No insertamos el clon simplemente
-                 * porque tenga childNodes.
-                 *
-                 * Primero verificamos que realmente
-                 * tenga contenido visible.
-                 */
                 if (
                     fragmentHasMeaningfulContent(
                         tail
@@ -351,10 +320,6 @@ function splitExclusiveAncestorsAtRange(range) {
                     );
                 }
 
-                /*
-                 * El cursor siempre queda después
-                 * de la primera mitad.
-                 */
                 range.setStartAfter(
                     node
                 );
@@ -535,6 +500,7 @@ function deactivateExclusiveFormatAtCaret(
                 tail
             )
         ) {
+
             after.appendChild(
                 tail
             );
@@ -546,10 +512,6 @@ function deactivateExclusiveFormatAtCaret(
     }
 
 
-    /*
-     * Solo insertamos la segunda mitad si
-     * contiene contenido real.
-     */
     const hasTail =
         after.hasChildNodes() &&
         hasMeaningfulInlineContent(
@@ -565,9 +527,6 @@ function deactivateExclusiveFormatAtCaret(
     }
 
 
-    /*
-     * Marcador fuera del formato.
-     */
     const marker =
         document.createTextNode(
             "\u200B"
@@ -581,9 +540,6 @@ function deactivateExclusiveFormatAtCaret(
     );
 
 
-    /*
-     * Cursor fuera del elemento formateado.
-     */
     const plainRange =
         document.createRange();
 
@@ -1053,16 +1009,6 @@ function toggleExclusiveInlineFormat(
         }
 
 
-        /*
-         * AQUÍ está la parte importante:
-         *
-         * Si el cursor está dentro de code y
-         * vamos a cambiar a otro formato,
-         * primero dividimos el formato actual.
-         *
-         * La función corregida ya no genera
-         * un segundo elemento vacío.
-         */
         splitExclusiveAncestorsAtRange(
             range
         );
@@ -3069,7 +3015,16 @@ function escapeAttribute(value) {
         );
 }
 
+
+/* ------------------------------------------------------------
+   INLINE SERIALIZATION
+   ------------------------------------------------------------ */
+
 function childrenToMarkdown(node) {
+
+    if (!node) {
+        return "";
+    }
 
     return [
         ...node.childNodes
@@ -3172,14 +3127,10 @@ function inlineToMarkdown(node) {
         ) || ""})`;
     }
 
-    if (tag === "span") {
-
-        return childrenToMarkdown(
-            node
-        );
-    }
-
-    if (tag === "font") {
+    if (
+        tag === "span" ||
+        tag === "font"
+    ) {
 
         return childrenToMarkdown(
             node
@@ -3191,7 +3142,234 @@ function inlineToMarkdown(node) {
     );
 }
 
+
+/* ------------------------------------------------------------
+   BLOCK DETECTION
+   ------------------------------------------------------------ */
+
+function isMarkdownBlockElement(node) {
+
+    if (
+        !node ||
+        node.nodeType !== Node.ELEMENT_NODE
+    ) {
+        return false;
+    }
+
+    const tag =
+        node.tagName.toLowerCase();
+
+    return (
+        /^h[1-6]$/.test(tag) ||
+        tag === "p" ||
+        tag === "div" ||
+        tag === "blockquote" ||
+        tag === "ul" ||
+        tag === "ol" ||
+        tag === "li" ||
+        tag === "pre" ||
+        tag === "hr"
+    );
+}
+
+
+/* ------------------------------------------------------------
+   MIXED BLOCK / INLINE SERIALIZATION
+   ------------------------------------------------------------ */
+
+function serializeMixedChildren(node) {
+
+    if (!node) {
+        return "";
+    }
+
+    const output = [];
+
+    for (const child of node.childNodes) {
+
+        if (
+            child.nodeType ===
+            Node.TEXT_NODE
+        ) {
+
+            output.push(
+                child.nodeValue
+                    .replace(
+                        /\u200B/g,
+                        ""
+                    )
+                    .replace(
+                        /\u00a0/g,
+                        " "
+                    )
+            );
+
+            continue;
+        }
+
+        if (
+            child.nodeType !==
+            Node.ELEMENT_NODE
+        ) {
+            continue;
+        }
+
+        const tag =
+            child.tagName.toLowerCase();
+
+        if (
+            tag === "ul" ||
+            tag === "ol" ||
+            tag === "blockquote" ||
+            tag === "pre" ||
+            tag === "hr" ||
+            /^h[1-6]$/.test(tag)
+        ) {
+
+            output.push(
+                blockToMarkdown(
+                    child
+                )
+            );
+
+            continue;
+        }
+
+        if (
+            tag === "p" ||
+            tag === "div"
+        ) {
+
+            output.push(
+                blockToMarkdown(
+                    child
+                )
+            );
+
+            continue;
+        }
+
+        output.push(
+            inlineToMarkdown(
+                child
+            )
+        );
+    }
+
+    return output.join("");
+}
+
+
+/* ------------------------------------------------------------
+   LIST ITEM SERIALIZATION
+   ------------------------------------------------------------ */
+
+function listItemInlineMarkdown(li) {
+
+    if (!li) {
+        return "";
+    }
+
+    const output = [];
+
+    for (const child of li.childNodes) {
+
+        if (
+            child.nodeType ===
+            Node.TEXT_NODE
+        ) {
+
+            output.push(
+                child.nodeValue
+                    .replace(
+                        /\u200B/g,
+                        ""
+                    )
+                    .replace(
+                        /\u00a0/g,
+                        " "
+                    )
+            );
+
+            continue;
+        }
+
+        if (
+            child.nodeType !==
+            Node.ELEMENT_NODE
+        ) {
+            continue;
+        }
+
+        const tag =
+            child.tagName.toLowerCase();
+
+        if (
+            tag === "ul" ||
+            tag === "ol"
+        ) {
+            continue;
+        }
+
+        if (
+            tag === "p" ||
+            tag === "div"
+        ) {
+
+            output.push(
+                serializeMixedChildren(
+                    child
+                ).trim()
+            );
+
+            continue;
+        }
+
+        output.push(
+            inlineToMarkdown(
+                child
+            )
+        );
+    }
+
+    return output
+        .join("")
+        .trim();
+}
+
+function serializeNestedList(
+    list,
+    indent = "    "
+) {
+
+    const markdown =
+        blockToMarkdown(
+            list
+        ).trimEnd();
+
+    return markdown
+        .split("\n")
+        .map(
+            line =>
+                line
+                    ? indent + line
+                    : line
+        )
+        .join("\n");
+}
+
+
+/* ------------------------------------------------------------
+   BLOCK SERIALIZATION
+   ------------------------------------------------------------ */
+
 function blockToMarkdown(node) {
+
+    if (
+        !node
+    ) {
+        return "";
+    }
 
     if (
         node.nodeType ===
@@ -3214,6 +3392,11 @@ function blockToMarkdown(node) {
 
     const tag =
         node.tagName.toLowerCase();
+
+
+    /* --------------------------------------------------------
+       IMAGE
+       -------------------------------------------------------- */
 
     if (
         tag === "p" &&
@@ -3252,8 +3435,14 @@ function blockToMarkdown(node) {
         alt='${alt}'
         src='${src}'>
 </p>
+
 `;
     }
+
+
+    /* --------------------------------------------------------
+       HEADINGS
+       -------------------------------------------------------- */
 
     if (
         /^h[1-6]$/.test(tag)
@@ -3264,38 +3453,82 @@ function blockToMarkdown(node) {
                 tag.substring(1)
             );
 
+        const content =
+            serializeMixedChildren(
+                node
+            )
+                .trim();
+
         return `${"#".repeat(
             level
-        )} ${childrenToMarkdown(
-            node
-        ).trim()}\n\n`;
+        )} ${content}\n\n`;
     }
+
+
+    /* --------------------------------------------------------
+       PARAGRAPH
+       -------------------------------------------------------- */
 
     if (tag === "p") {
 
-        return `${childrenToMarkdown(
-            node
-        ).trim()}\n\n`;
+        const content =
+            serializeMixedChildren(
+                node
+            )
+                .trim();
+
+        if (!content) {
+            return "\n";
+        }
+
+        return `${content}\n\n`;
     }
+
+
+    /* --------------------------------------------------------
+       BLOCKQUOTE
+       -------------------------------------------------------- */
 
     if (tag === "blockquote") {
 
-        return childrenToMarkdown(
-            node
-        )
-            .trim()
-            .split("\n")
+        const content =
+            serializeMixedChildren(
+                node
+            )
+                .trim();
+
+        if (!content) {
+            return ">\n\n";
+        }
+
+        const lines =
+            content.split("\n");
+
+        return lines
             .map(
                 line =>
-                    `> ${line}`
+                    line.length
+                        ? `> ${line}`
+                        : ">"
             )
             .join("\n")
             + "\n\n";
     }
 
+
+    /* --------------------------------------------------------
+       HORIZONTAL RULE
+       -------------------------------------------------------- */
+
     if (tag === "hr") {
+
         return "---\n\n";
     }
+
+
+    /* --------------------------------------------------------
+       CODE BLOCK
+       -------------------------------------------------------- */
 
     if (
         tag === "pre" &&
@@ -3304,61 +3537,281 @@ function blockToMarkdown(node) {
         )
     ) {
 
+        const content =
+            node.textContent
+                .replace(
+                    /\u200B/g,
+                    ""
+                )
+                .replace(
+                    /\n$/,
+                    ""
+                );
+
         return `\`\`\`
-${node.textContent.replace(
-            /\n$/,
-            ""
-        )}
+${content}
 \`\`\`
+
 `;
     }
 
+
+    /* --------------------------------------------------------
+       UNORDERED LIST
+       -------------------------------------------------------- */
+
     if (tag === "ul") {
 
-        return [
+        const items = [
             ...node.children
-        ]
-            .map(
-                li =>
-                    `- ${childrenToMarkdown(
-                        li
-                    ).trim()}`
-            )
-            .join("\n")
-            + "\n\n";
+        ].filter(
+            child =>
+                child.tagName.toLowerCase() ===
+                "li"
+        );
+
+        if (!items.length) {
+            return "";
+        }
+
+        const lines = [];
+
+        items.forEach(li => {
+
+            const content =
+                listItemInlineMarkdown(
+                    li
+                );
+
+            lines.push(
+                `- ${content}`
+            );
+
+            const nestedLists = [
+                ...li.children
+            ].filter(
+                child => {
+
+                    const childTag =
+                        child.tagName.toLowerCase();
+
+                    return (
+                        childTag === "ul" ||
+                        childTag === "ol"
+                    );
+                }
+            );
+
+            nestedLists.forEach(
+                nested => {
+
+                    lines.push(
+                        serializeNestedList(
+                            nested
+                        )
+                    );
+                }
+            );
+        });
+
+        return (
+            lines.join("\n") +
+            "\n\n"
+        );
     }
+
+
+    /* --------------------------------------------------------
+       ORDERED LIST
+       -------------------------------------------------------- */
 
     if (tag === "ol") {
 
-        return [
+        const items = [
             ...node.children
-        ]
-            .map(
-                (li, index) =>
-                    `${index + 1}. ${childrenToMarkdown(
+        ].filter(
+            child =>
+                child.tagName.toLowerCase() ===
+                "li"
+        );
+
+        if (!items.length) {
+            return "";
+        }
+
+        const lines = [];
+
+        items.forEach(
+            (li, index) => {
+
+                const content =
+                    listItemInlineMarkdown(
                         li
-                    ).trim()}`
-            )
-            .join("\n")
-            + "\n\n";
+                    );
+
+                /*
+                 * Markdown permite usar 1. repetido.
+                 *
+                 * Sin embargo aquí conservamos
+                 * numeración explícita.
+                 */
+                lines.push(
+                    `${index + 1}. ${content}`
+                );
+
+                const nestedLists = [
+                    ...li.children
+                ].filter(
+                    child => {
+
+                        const childTag =
+                            child.tagName.toLowerCase();
+
+                        return (
+                            childTag === "ul" ||
+                            childTag === "ol"
+                        );
+                    }
+                );
+
+                nestedLists.forEach(
+                    nested => {
+
+                        lines.push(
+                            serializeNestedList(
+                                nested
+                            )
+                        );
+                    }
+                );
+            }
+        );
+
+        return (
+            lines.join("\n") +
+            "\n\n"
+        );
     }
 
-    return childrenToMarkdown(
+
+    /* --------------------------------------------------------
+       LIST ITEM AISLADO
+       -------------------------------------------------------- */
+
+    if (tag === "li") {
+
+        return (
+            listItemInlineMarkdown(
+                node
+            ) +
+            "\n\n"
+        );
+    }
+
+
+    /* --------------------------------------------------------
+       CODE GENÉRICO
+       -------------------------------------------------------- */
+
+    if (tag === "pre") {
+
+        const content =
+            node.textContent
+                .replace(
+                    /\u200B/g,
+                    ""
+                )
+                .replace(
+                    /\n$/,
+                    ""
+                );
+
+        return `\`\`\`
+${content}
+\`\`\`
+
+`;
+    }
+
+
+    /* --------------------------------------------------------
+       DIV / WRAPPER
+       -------------------------------------------------------- */
+
+    if (tag === "div") {
+
+        return serializeMixedChildren(
+            node
+        );
+    }
+
+
+    /* --------------------------------------------------------
+       FALLBACK
+       -------------------------------------------------------- */
+
+    return serializeMixedChildren(
         node
     );
 }
+
+
+/* ------------------------------------------------------------
+   HTML -> MARKDOWN
+   ------------------------------------------------------------ */
 
 function htmlToMarkdown() {
 
     synchronizeImageIds();
 
-    return [
-        ...editor.childNodes
-    ]
-        .map(
-            blockToMarkdown
-        )
+    const parts = [];
+
+    for (
+        const node of editor.childNodes
+    ) {
+
+        if (
+            node.nodeType ===
+            Node.TEXT_NODE
+        ) {
+
+            const text =
+                node.nodeValue
+                    .replace(
+                        /\u200B/g,
+                        ""
+                    )
+                    .trim();
+
+            if (text) {
+                parts.push(
+                    `${text}\n\n`
+                );
+            }
+
+            continue;
+        }
+
+        if (
+            node.nodeType !==
+            Node.ELEMENT_NODE
+        ) {
+            continue;
+        }
+
+        parts.push(
+            blockToMarkdown(
+                node
+            )
+        );
+    }
+
+    return parts
         .join("")
+        .replace(
+            /[ \t]+\n/g,
+            "\n"
+        )
         .replace(
             /\n{3,}/g,
             "\n\n"
@@ -3524,7 +3977,11 @@ function markdownToHTML(markdown) {
                 i++;
             }
 
-            i++;
+            if (
+                i < lines.length
+            ) {
+                i++;
+            }
 
             html.push(
                 `<pre class="code-block"><code>${escapeHTML(
