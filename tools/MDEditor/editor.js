@@ -1,7 +1,7 @@
 /* ============================================================
    REFERENCES
    ============================================================ */
-
+//Fixes vro
 const editor = document.getElementById("document");
 const toolbar = document.getElementById("toolbar");
 const fileInput = document.getElementById("fileInput");
