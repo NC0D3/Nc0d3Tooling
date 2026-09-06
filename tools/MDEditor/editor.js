@@ -1,12 +1,7 @@
-/* ============================================================
-   REFERENCES
-   ============================================================ */
-//Fixes vro
 const editor=document.getElementById("document"),toolbar=document.getElementById("toolbar"),fileInput=document.getElementById("fileInput"),loadButton=document.getElementById("loadButton"),saveButton=document.getElementById("saveButton"),formatStatus=document.getElementById("formatStatus"),wordStatus=document.getElementById("wordStatus"),charStatus=document.getElementById("charStatus"),inlineCodeButton=document.getElementById("inlineCodeButton"),codeBlockButton=document.getElementById("codeBlockButton"),clearFormatButton=document.getElementById("clearFormatButton");
-/* ============================================================
-   SELECTION
-   ============================================================ */
+
 let savedRange=null;
+
 function saveSelection(){
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount)return;
@@ -36,9 +31,7 @@ document.addEventListener("selectionchange",()=>{
         updateToolbarState();
     }
 });
-/* ============================================================
-   CURRENT NODE
-   ============================================================ */
+
 function getCurrentNode(){
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount)return null;
@@ -53,9 +46,7 @@ function closestElement(selector){
     if(node.nodeType===Node.ELEMENT_NODE)return node.closest(selector);
     return node.parentElement?.closest(selector)||null;
 }
-/* ============================================================
-   MUTUALLY EXCLUSIVE INLINE FORMATS
-   ============================================================ */
+
 const EXCLUSIVE_INLINE_SELECTOR="strong,b,em,i,u,s,strike,del,code.inline-code";
 function isExclusiveInlineElement(element){
     if(!element||element.nodeType!==Node.ELEMENT_NODE)return false;
@@ -74,9 +65,7 @@ function unwrapExclusiveFormats(root){
     const elements=[...root.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)];
     elements.forEach(unwrapInlineElement);
 }
-/* ============================================================
-   VISUAL CONTENT TEST
-   ============================================================ */
+
 function hasMeaningfulInlineContent(node){
     if(!node)return false;
     if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim().length>0;
@@ -90,9 +79,7 @@ function fragmentHasMeaningfulContent(fragment){
     for(const child of fragment.childNodes)if(hasMeaningfulInlineContent(child))return true;
     return false;
 }
-/* ============================================================
-   SPLIT EXCLUSIVE ANCESTORS AT RANGE
-   ============================================================ */
+
 function splitExclusiveAncestorsAtRange(range){
     let node=range.startContainer;
     if(node.nodeType===Node.TEXT_NODE)node=node.parentElement;
@@ -118,9 +105,7 @@ function splitExclusiveAncestorsAtRange(range){
         node=node.parentElement;
     }
 }
-/* ============================================================
-   EXCLUSIVE FORMAT HELPERS
-   ============================================================ */
+
 function getExclusiveAncestorAtRange(range,selector){
     if(!range)return null;
     let node=range.startContainer;
@@ -134,9 +119,7 @@ function isInlineElementVisuallyEmpty(element){
     clone.querySelectorAll("br").forEach(br=>br.remove());
     return clone.textContent.replace(/\u200B/g,"").replace(/\u00A0/g,"").trim().length===0;
 }
-/* ============================================================
-   DESACTIVAR FORMATO EN EL CURSOR
-   ============================================================ */
+
 function deactivateExclusiveFormatAtCaret(range,selector){
     if(!range||!range.collapsed)return false;
     const activeElement=getExclusiveAncestorAtRange(range,selector);
@@ -174,9 +157,7 @@ function deactivateExclusiveFormatAtCaret(range,selector){
     selection.addRange(plainRange);
     return true;
 }
-/* ============================================================
-   SELECTION FULLY INSIDE FORMAT
-   ============================================================ */
+
 function selectionFullyInside(selector,range){
     if(!range)return false;
     if(range.collapsed){
@@ -206,9 +187,7 @@ function createExclusiveElement(tagName){
     if(tagName==="code")element.className="inline-code";
     return element;
 }
-/* ============================================================
-   EMPTY BLOCK HELPER
-   ============================================================ */
+
 function isBlockVisuallyEmpty(block){
     if(!block)return false;
     const clone=block.cloneNode(true);
@@ -221,9 +200,7 @@ function removeEmptyBlockBreak(block){
     if(!isBlockVisuallyEmpty(block))return;
     block.querySelectorAll("br").forEach(br=>br.remove());
 }
-/* ============================================================
-   EMPTY BLOCK DELETE PROTECTION
-   ============================================================ */
+
 function getCurrentEditableBlock(){
     const node=getCurrentNode();
     if(!node)return null;
@@ -259,9 +236,7 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 },true);
-/* ============================================================
-   TOGGLE EXCLUSIVE INLINE FORMAT
-   ============================================================ */
+
 function toggleExclusiveInlineFormat(tagName){
     restoreSelection();
     editor.focus();
@@ -326,9 +301,7 @@ function toggleExclusiveInlineFormat(tagName){
     updateToolbarState();
     updateStatus();
 }
-/* ============================================================
-   BASIC EXEC
-   ============================================================ */
+
 function exec(command,value=null){
     restoreSelection();
     editor.focus();
@@ -338,9 +311,7 @@ function exec(command,value=null){
     updateToolbarState();
     updateStatus();
 }
-/* ============================================================
-   FORMAT BLOCK
-   ============================================================ */
+
 function formatBlock(tag){
     restoreSelection();
     editor.focus();
@@ -363,9 +334,7 @@ function formatBlock(tag){
     updateToolbarState();
     updateStatus();
 }
-/* ============================================================
-   TOOLBAR
-   ============================================================ */
+
 toolbar.addEventListener("mousedown",event=>{
     const button=event.target.closest(".tool");
     if(button)event.preventDefault();
@@ -397,16 +366,12 @@ toolbar.addEventListener("click",event=>{
         case "horizontalRule":exec("insertHorizontalRule");break;
     }
 });
-/* ============================================================
-   INLINE CODE
-   ============================================================ */
+
 function getInlineCode(){return closestElement("code.inline-code");}
 function unwrapInlineCode(code){unwrapInlineElement(code);}
 function toggleInlineCode(){toggleExclusiveInlineFormat("code");}
 inlineCodeButton.addEventListener("click",toggleInlineCode);
-/* ============================================================
-   CODE BLOCK
-   ============================================================ */
+
 function getCodeBlock(){return closestElement("pre.code-block");}
 function getCodeElement(){return closestElement("pre.code-block code");}
 function removeCodeBlock(pre){
@@ -459,9 +424,7 @@ function toggleCodeBlock(){
     enterCodeBlock();
 }
 codeBlockButton.addEventListener("click",toggleCodeBlock);
-/* ============================================================
-   CODE BLOCK KEYBOARD
-   ============================================================ */
+
 editor.addEventListener("keydown",event=>{
     if(event.key!=="Enter")return;
     const code=getCodeElement();
@@ -481,9 +444,7 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 });
-/* ============================================================
-   ENTER -> NORMAL PARAGRAPH
-   ============================================================ */
+
 function clearInlineFormattingFromBlock(block){
     if(!block||!editor.contains(block))return;
     const inlineElements=block.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR);
@@ -520,9 +481,7 @@ editor.addEventListener("keydown",event=>{
         updateStatus();
     });
 });
-/* ============================================================
-   CLEAR FORMAT
-   ============================================================ */
+
 clearFormatButton.addEventListener("click",()=>{
     restoreSelection();
     editor.focus();
@@ -539,9 +498,7 @@ clearFormatButton.addEventListener("click",()=>{
     updateToolbarState();
     updateStatus();
 });
-/* ============================================================
-   LINKS
-   ============================================================ */
+
 const linkModal=document.getElementById("linkModal"),linkUrl=document.getElementById("linkUrl"),linkText=document.getElementById("linkText"),cancelLink=document.getElementById("cancelLink"),applyLink=document.getElementById("applyLink"),linkButton=document.getElementById("linkButton"),unlinkButton=document.getElementById("unlinkButton");
 function openLinkModal(){
     saveSelection();
@@ -580,9 +537,7 @@ applyLink.addEventListener("click",()=>{
     updateStatus();
 });
 unlinkButton.addEventListener("click",()=>{exec("unlink");});
-/* ============================================================
-   IMAGE SYSTEM
-   ============================================================ */
+
 let selectedImage=null;
 function nextImageId(){
     const images=editor.querySelectorAll("p.md-image img");
@@ -621,9 +576,7 @@ function insertImageFile(file){
     };
     reader.readAsDataURL(file);
 }
-/* ============================================================
-   IMAGE PASTE
-   ============================================================ */
+
 editor.addEventListener("paste",event=>{
     const clipboard=event.clipboardData;
     if(!clipboard)return;
@@ -635,9 +588,7 @@ editor.addEventListener("paste",event=>{
         if(file)insertImageFile(file);
     });
 },true);
-/* ============================================================
-   IMAGE DRAG DROP
-   ============================================================ */
+
 editor.addEventListener("dragover",event=>{
     const files=[...event.dataTransfer.files];
     if(files.some(file=>file.type.startsWith("image/")))event.preventDefault();
@@ -648,18 +599,14 @@ editor.addEventListener("drop",event=>{
     event.preventDefault();
     images.forEach(insertImageFile);
 });
-/* ============================================================
-   IMAGE CLICK
-   ============================================================ */
+
 editor.addEventListener("click",event=>{
     if(event.target.tagName!=="IMG")return;
     const image=event.target;
     if(!image.closest("p.md-image"))return;
     openImageModal(image);
 });
-/* ============================================================
-   IMAGE MODAL
-   ============================================================ */
+
 const imageModal=document.getElementById("imageModal"),imageSizeMode=document.getElementById("imageSizeMode"),imageSizeValue=document.getElementById("imageSizeValue"),imageSizeValueContainer=document.getElementById("imageSizeValueContainer"),imageAlt=document.getElementById("imageAlt"),applyImage=document.getElementById("applyImage"),cancelImage=document.getElementById("cancelImage"),removeImage=document.getElementById("removeImage");
 function openImageModal(image){
     selectedImage=image;
@@ -722,9 +669,7 @@ removeImage.addEventListener("click",()=>{
     synchronizeImageIds();
     updateStatus();
 });
-/* ============================================================
-   IMAGE IDS
-   ============================================================ */
+
 function synchronizeImageIds(){
     const wrappers=editor.querySelectorAll("p.md-image");
     wrappers.forEach((wrapper,index)=>{
@@ -735,9 +680,7 @@ function synchronizeImageIds(){
         if(!image.style.width)image.style.width="80%";
     });
 }
-/* ============================================================
-   TOOLBAR STATE
-   ============================================================ */
+
 function updateToolbarState(){
     const selection=window.getSelection();
     let range=null;
@@ -776,9 +719,7 @@ function updateToolbarState(){
         button.classList.toggle("active",active);
     });
 }
-/* ============================================================
-   STATUS
-   ============================================================ */
+
 function updateStatus(){
     const text=editor.innerText.replace(/\s+/g," ").trim(),words=text?text.split(/\s+/).length:0;
     wordStatus.textContent=`${words}${words===1?" palabra":" palabras"}`;
@@ -799,9 +740,7 @@ function updateStatus(){
     }
     formatStatus.textContent=block.tagName==="BLOCKQUOTE"?"Cita":block.tagName;
 }
-/* ============================================================
-   CARET
-   ============================================================ */
+
 function placeCaretAtEnd(element){
     if(!element)return;
     const range=document.createRange();
@@ -822,9 +761,7 @@ function placeCaretAtStart(element){
     selection.addRange(range);
     editor.focus();
 }
-/* ============================================================
-   NORMALIZE
-   ============================================================ */
+
 function normalizeExclusiveFormatting(){
     const elements=[...editor.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)];
     elements.forEach(element=>{
@@ -849,21 +786,20 @@ function normalizeEditor(){
     normalizeExclusiveFormatting();
     synchronizeImageIds();
 }
-/* ============================================================
-   MARKDOWN SERIALIZATION
-   ============================================================ */
+
 function escapeAttribute(value){
     return String(value).replace(/&/g,"&amp;").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
-/* ------------------------------------------------------------
-   INLINE SERIALIZATION
-   ------------------------------------------------------------ */
+function escapeMarkdownText(value){
+    return String(value).replace(/\\/g,"\\\\").replace(/([\\`*_[\]{}()#+\-.!>])/g,"\\$1");
+}
+
 function childrenToMarkdown(node){
     if(!node)return "";
     return [...node.childNodes].map(inlineToMarkdown).join("");
 }
 function inlineToMarkdown(node){
-    if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," ");
+    if(node.nodeType===Node.TEXT_NODE)return escapeMarkdownText(node.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," "));
     if(node.nodeType!==Node.ELEMENT_NODE)return "";
     const tag=node.tagName.toLowerCase();
     if(tag==="br")return "\n";
@@ -876,23 +812,19 @@ function inlineToMarkdown(node){
     if(tag==="span"||tag==="font")return childrenToMarkdown(node);
     return childrenToMarkdown(node);
 }
-/* ------------------------------------------------------------
-   BLOCK DETECTION
-   ------------------------------------------------------------ */
+
 function isMarkdownBlockElement(node){
     if(!node||node.nodeType!==Node.ELEMENT_NODE)return false;
     const tag=node.tagName.toLowerCase();
     return /^h[1-6]$/.test(tag)||tag==="p"||tag==="div"||tag==="blockquote"||tag==="ul"||tag==="ol"||tag==="li"||tag==="pre"||tag==="hr";
 }
-/* ------------------------------------------------------------
-   MIXED BLOCK / INLINE SERIALIZATION
-   ------------------------------------------------------------ */
+
 function serializeMixedChildren(node){
     if(!node)return "";
     const output=[];
     for(const child of node.childNodes){
         if(child.nodeType===Node.TEXT_NODE){
-            output.push(child.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," "));
+            output.push(escapeMarkdownText(child.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," ")));
             continue;
         }
         if(child.nodeType!==Node.ELEMENT_NODE)continue;
@@ -905,15 +837,13 @@ function serializeMixedChildren(node){
     }
     return output.join("");
 }
-/* ------------------------------------------------------------
-   LIST ITEM SERIALIZATION
-   ------------------------------------------------------------ */
+
 function listItemInlineMarkdown(li){
     if(!li)return "";
     const output=[];
     for(const child of li.childNodes){
         if(child.nodeType===Node.TEXT_NODE){
-            output.push(child.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," "));
+            output.push(escapeMarkdownText(child.nodeValue.replace(/\u200B/g,"").replace(/\u00a0/g," ")));
             continue;
         }
         if(child.nodeType!==Node.ELEMENT_NODE)continue;
@@ -931,12 +861,10 @@ function serializeNestedList(list,indent="    "){
     const markdown=blockToMarkdown(list).trimEnd();
     return markdown.split("\n").map(line=>line?indent+line:line).join("\n");
 }
-/* ------------------------------------------------------------
-   BLOCK SERIALIZATION
-   ------------------------------------------------------------ */
+
 function blockToMarkdown(node){
     if(!node)return "";
-    if(node.nodeType===Node.TEXT_NODE)return node.nodeValue.replace(/\u200B/g,"");
+    if(node.nodeType===Node.TEXT_NODE)return escapeMarkdownText(node.nodeValue.replace(/\u200B/g,""));
     if(node.nodeType!==Node.ELEMENT_NODE)return "";
     const tag=node.tagName.toLowerCase();
     if(tag==="p"&&node.classList.contains("md-image")){
@@ -1021,15 +949,13 @@ ${content}
     if(tag==="div")return serializeMixedChildren(node);
     return serializeMixedChildren(node);
 }
-/* ------------------------------------------------------------
-   HTML -> MARKDOWN
-   ------------------------------------------------------------ */
+
 function htmlToMarkdown(){
     synchronizeImageIds();
     const parts=[];
     for(const node of editor.childNodes){
         if(node.nodeType===Node.TEXT_NODE){
-            const text=node.nodeValue.replace(/\u200B/g,"").trim();
+            const text=escapeMarkdownText(node.nodeValue.replace(/\u200B/g,"").trim());
             if(text)parts.push(`${text}\n\n`);
             continue;
         }
@@ -1038,9 +964,7 @@ function htmlToMarkdown(){
     }
     return parts.join("").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()+"\n";
 }
-/* ============================================================
-   MARKDOWN LOADER
-   ============================================================ */
+
 function escapeHTML(text){
     const div=document.createElement("div");
     div.textContent=text;
@@ -1048,6 +972,7 @@ function escapeHTML(text){
 }
 function markdownInlineToHTML(text){
     let result=escapeHTML(text);
+    result=result.replace(/\\([\\`*_[\]{}()#+\-.!>])/g,"$1");
     result=result.replace(/`([^`]+)`/g,'<code class="inline-code">$1</code>');
     result=result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
     result=result.replace(/\*\*([^\*]+)\*\*/g,"<strong>$1</strong>");
@@ -1056,6 +981,7 @@ function markdownInlineToHTML(text){
     result=result.replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/gi,"<u>$1</u>");
     return result;
 }
+
 function markdownToHTML(markdown){
     const imageBlocks=[];
     markdown=markdown.replace(/<p\s+align=['"]center['"]\s+id=['"]([^'"]+)['"]>\s*<img\s+id=['"]([^'"]+)['"]\s+alt=['"]([^'"]*)['"]\s+src=['"]([^'"]+)['"]\s*>\s*<\/p>/gi,(_,wrapperId,imageId,alt,src)=>{
@@ -1145,9 +1071,7 @@ function markdownToHTML(markdown){
     }
     return html.join("\n");
 }
-/* ============================================================
-   LOAD
-   ============================================================ */
+
 loadButton.addEventListener("click",()=>{fileInput.click();});
 fileInput.addEventListener("change",async()=>{
     const file=fileInput.files?.[0];
@@ -1164,9 +1088,7 @@ fileInput.addEventListener("change",async()=>{
     }
     fileInput.value="";
 });
-/* ============================================================
-   SAVE
-   ============================================================ */
+
 async function saveMarkdown(){
     const markdown=htmlToMarkdown();
     if("showSaveFilePicker" in window){
@@ -1197,9 +1119,7 @@ async function saveMarkdown(){
     setTimeout(()=>{URL.revokeObjectURL(url);},1000);
 }
 saveButton.addEventListener("click",saveMarkdown);
-/* ============================================================
-   KEYBOARD SHORTCUTS
-   ============================================================ */
+
 document.addEventListener("keydown",event=>{
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s"){
         event.preventDefault();
@@ -1211,18 +1131,14 @@ document.addEventListener("keydown",event=>{
         openLinkModal();
     }
 });
-/* ============================================================
-   MODAL BACKDROPS
-   ============================================================ */
+
 linkModal.addEventListener("click",event=>{
     if(event.target===linkModal)closeLinkModal();
 });
 imageModal.addEventListener("click",event=>{
     if(event.target===imageModal)closeImageModal();
 });
-/* ============================================================
-   INITIALIZATION
-   ============================================================ */
+
 function initialize(){
     normalizeEditor();
     updateToolbarState();
