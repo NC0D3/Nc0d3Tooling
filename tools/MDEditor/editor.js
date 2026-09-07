@@ -1,4 +1,5 @@
 const editor=document.getElementById("document"),toolbar=document.getElementById("toolbar"),fileInput=document.getElementById("fileInput"),loadButton=document.getElementById("loadButton"),saveButton=document.getElementById("saveButton"),formatStatus=document.getElementById("formatStatus"),wordStatus=document.getElementById("wordStatus"),charStatus=document.getElementById("charStatus"),inlineCodeButton=document.getElementById("inlineCodeButton"),codeBlockButton=document.getElementById("codeBlockButton"),clearFormatButton=document.getElementById("clearFormatButton");
+
 let savedRange=null,exporting=false,exportCancelRequested=false,exportWritable=null,loading=false;
 
 function saveSelection(){
@@ -19,6 +20,7 @@ function restoreSelection(){
         return false;
     }
 }
+
 editor.addEventListener("mouseup",()=>{if(loading)return;saveSelection();updateToolbarState();});
 editor.addEventListener("keyup",()=>{if(exporting||loading)return;saveSelection();updateToolbarState();updateStatus();});
 document.addEventListener("selectionchange",()=>{
@@ -31,6 +33,7 @@ document.addEventListener("selectionchange",()=>{
         updateToolbarState();
     }
 });
+
 function getCurrentNode(){
     const selection=window.getSelection();
     if(!selection||!selection.rangeCount)return null;
@@ -45,7 +48,9 @@ function closestElement(selector){
     if(node.nodeType===Node.ELEMENT_NODE)return node.closest(selector);
     return node.parentElement?.closest(selector)||null;
 }
+
 const EXCLUSIVE_INLINE_SELECTOR="strong,b,em,i,u,s,strike,del,code.inline-code";
+
 function isExclusiveInlineElement(element){
     if(!element||element.nodeType!==Node.ELEMENT_NODE)return false;
     const tag=element.tagName.toLowerCase();
@@ -60,7 +65,7 @@ function unwrapInlineElement(element){
 }
 function unwrapExclusiveFormats(root){
     if(!root)return;
-    [...root.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)].forEach(unwrapInlineElement);
+    root.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR).forEach(unwrapInlineElement);
 }
 function hasMeaningfulInlineContent(node){
     if(!node)return false;
@@ -209,6 +214,7 @@ function editorHasMeaningfulContent(){
     }
     return false;
 }
+
 editor.addEventListener("keydown",event=>{
     if(exporting||loading)return;
     if(event.key!=="Backspace"&&event.key!=="Delete")return;
@@ -223,6 +229,7 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 },true);
+
 function toggleExclusiveInlineFormat(tagName){
     if(exporting||loading)return;
     restoreSelection();
@@ -313,6 +320,7 @@ function formatBlock(tag){
     updateToolbarState();
     updateStatus();
 }
+
 toolbar.addEventListener("mousedown",event=>{
     if(exporting||loading){event.preventDefault();return;}
     const button=event.target.closest(".tool");
@@ -340,10 +348,12 @@ toolbar.addEventListener("click",event=>{
         case "horizontalRule":exec("insertHorizontalRule");break;
     }
 });
+
 function getInlineCode(){return closestElement("code.inline-code");}
 function unwrapInlineCode(code){unwrapInlineElement(code);}
 function toggleInlineCode(){toggleExclusiveInlineFormat("code");}
 inlineCodeButton.addEventListener("click",toggleInlineCode);
+
 function getCodeBlock(){return closestElement("pre.code-block");}
 function getCodeElement(){return closestElement("pre.code-block code");}
 function removeCodeBlock(pre){
@@ -394,6 +404,7 @@ function toggleCodeBlock(){
     enterCodeBlock();
 }
 codeBlockButton.addEventListener("click",toggleCodeBlock);
+
 editor.addEventListener("keydown",event=>{
     if(exporting||loading||event.key!=="Enter")return;
     const code=getCodeElement();
@@ -413,9 +424,10 @@ editor.addEventListener("keydown",event=>{
     updateToolbarState();
     updateStatus();
 });
+
 function clearInlineFormattingFromBlock(block){
     if(!block||!editor.contains(block))return;
-    [...block.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)].forEach(unwrapInlineElement);
+    block.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR).forEach(unwrapInlineElement);
 }
 editor.addEventListener("keydown",event=>{
     if(exporting||loading||event.key!=="Enter"||event.shiftKey)return;
@@ -448,6 +460,7 @@ editor.addEventListener("keydown",event=>{
         updateStatus();
     });
 });
+
 clearFormatButton.addEventListener("click",()=>{
     if(exporting||loading)return;
     restoreSelection();
@@ -464,7 +477,9 @@ clearFormatButton.addEventListener("click",()=>{
     updateToolbarState();
     updateStatus();
 });
+
 const linkModal=document.getElementById("linkModal"),linkUrl=document.getElementById("linkUrl"),linkText=document.getElementById("linkText"),cancelLink=document.getElementById("cancelLink"),applyLink=document.getElementById("applyLink"),linkButton=document.getElementById("linkButton"),unlinkButton=document.getElementById("unlinkButton");
+
 function openLinkModal(){
     if(exporting||loading)return;
     saveSelection();
@@ -477,6 +492,7 @@ function openLinkModal(){
 function closeLinkModal(){linkModal.classList.remove("open");}
 linkButton.addEventListener("click",openLinkModal);
 cancelLink.addEventListener("click",closeLinkModal);
+
 applyLink.addEventListener("click",()=>{
     if(exporting||loading)return;
     restoreSelection();
@@ -504,7 +520,9 @@ applyLink.addEventListener("click",()=>{
     updateStatus();
 });
 unlinkButton.addEventListener("click",()=>{if(!exporting&&!loading)exec("unlink");});
+
 let selectedImage=null;
+
 function nextImageId(){
     const images=editor.querySelectorAll("p.md-image img");
     let max=0;
@@ -514,6 +532,7 @@ function nextImageId(){
     });
     return `evidencia_${String(max+1).padStart(3,"0")}`;
 }
+
 function insertImageFile(file){
     if(exporting||loading||!file||!file.type.startsWith("image/"))return;
     const reader=new FileReader();
@@ -546,6 +565,7 @@ function insertImageFile(file){
     };
     reader.readAsDataURL(file);
 }
+
 editor.addEventListener("paste",event=>{
     if(exporting||loading)return;
     const clipboard=event.clipboardData;
@@ -558,6 +578,7 @@ editor.addEventListener("paste",event=>{
         if(file)insertImageFile(file);
     });
 },true);
+
 editor.addEventListener("dragover",event=>{
     if(exporting||loading)return;
     const files=[...event.dataTransfer.files];
@@ -576,7 +597,9 @@ editor.addEventListener("click",event=>{
     if(!image.closest("p.md-image"))return;
     openImageModal(image);
 });
+
 const imageModal=document.getElementById("imageModal"),imageSizeMode=document.getElementById("imageSizeMode"),imageSizeValue=document.getElementById("imageSizeValue"),imageSizeValueContainer=document.getElementById("imageSizeValueContainer"),imageAlt=document.getElementById("imageAlt"),applyImage=document.getElementById("applyImage"),cancelImage=document.getElementById("cancelImage"),removeImage=document.getElementById("removeImage");
+
 function openImageModal(image){
     if(exporting||loading)return;
     selectedImage=image;
@@ -634,6 +657,7 @@ removeImage.addEventListener("click",()=>{
     synchronizeImageIds();
     updateStatus();
 });
+
 function synchronizeImageIds(){
     const wrappers=editor.querySelectorAll("p.md-image");
     wrappers.forEach((wrapper,index)=>{
@@ -644,6 +668,7 @@ function synchronizeImageIds(){
         if(!image.style.width)image.style.width="80%";
     });
 }
+
 function updateToolbarState(){
     if(exporting||loading)return;
     const selection=window.getSelection();
@@ -677,13 +702,28 @@ function updateToolbarState(){
         button.classList.toggle("active",active);
     });
 }
+
+/* IMPORTANTE:
+   Ya no usamos editor.innerText completo.
+   Esto evita crear otra copia gigantesca de un documento de cientos de MB. */
 function updateStatus(){
     if(exporting||loading)return;
-    const text=editor.innerText.replace(/\s+/g," ").trim(),words=text?text.split(/\s+/).length:0;
+    let chars=0,words=0,inWord=false;
+    const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
+    let node;
+    while((node=walker.nextNode())){
+        const text=node.nodeValue||"";
+        chars+=text.replace(/\u200B/g,"").length;
+        const parts=text.replace(/\u200B/g,"").trim();
+        if(parts){
+            const count=parts.split(/\s+/).length;
+            words+=count;
+        }
+    }
     wordStatus.textContent=`${words}${words===1?" palabra":" palabras"}`;
-    charStatus.textContent=`${text.length}${text.length===1?" carácter":" caracteres"}`;
-    const node=getCurrentNode();
-    if(!node){
+    charStatus.textContent=`${chars}${chars===1?" carácter":" caracteres"}`;
+    const current=getCurrentNode();
+    if(!current){
         formatStatus.textContent="Normal";
         return;
     }
@@ -691,9 +731,10 @@ function updateStatus(){
         formatStatus.textContent="Código";
         return;
     }
-    const block=node.closest("h1,h2,h3,h4,h5,h6,blockquote,pre,p,li");
+    const block=current.closest("h1,h2,h3,h4,h5,h6,blockquote,pre,p,li");
     formatStatus.textContent=block?(block.tagName==="BLOCKQUOTE"?"Cita":block.tagName):"Normal";
 }
+
 function placeCaretAtEnd(element){
     if(!element)return;
     const range=document.createRange();
@@ -715,7 +756,7 @@ function placeCaretAtStart(element){
     editor.focus();
 }
 function normalizeExclusiveFormatting(){
-    [...editor.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR)].forEach(element=>{
+    editor.querySelectorAll(EXCLUSIVE_INLINE_SELECTOR).forEach(element=>{
         let parent=element.parentElement;
         while(parent&&parent!==editor){
             if(isExclusiveInlineElement(parent)){
@@ -737,11 +778,12 @@ function normalizeEditor(){
     normalizeExclusiveFormatting();
     synchronizeImageIds();
 }
+
 function escapeAttribute(value){
     return String(value).replace(/&/g,"&amp;").replace(/'/g,"&#39;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 function escapeMarkdownText(value){
-    return String(value).replace(/\\/g,"\\\\").replace(/([\\`\*\_#[\]{}()+\-.!>])/g,"\\$1");
+    return String(value).replace(/\\/g,"\\\\").replace(/([\\`*_#[\]{}()+\-.!>])/g,"\\$1");
 }
 function childrenToMarkdown(node){
     if(!node)return "";
@@ -806,6 +848,7 @@ function blockToMarkdown(node){
     if(node.nodeType===Node.TEXT_NODE)return escapeMarkdownText(node.nodeValue.replace(/\u200B/g,""));
     if(node.nodeType!==Node.ELEMENT_NODE)return "";
     const tag=node.tagName.toLowerCase();
+
     if(tag==="p"&&node.classList.contains("md-image")){
         const image=node.querySelector("img");
         if(!image)return "";
@@ -857,6 +900,7 @@ function blockToMarkdown(node){
     }
     return serializeMixedChildren(node);
 }
+
 function utf8Length(text){
     let bytes=0;
     for(let i=0;i<text.length;i++){
@@ -875,10 +919,7 @@ function escapedMarkdownByteLength(text){
     for(let i=0;i<text.length;i++){
         const char=text[i];
         if(char==="\u200B")continue;
-        if(char==="\u00A0"){
-            bytes++;
-            continue;
-        }
+        if(char==="\u00A0"){bytes++;continue;}
         if(escaped.has(char))bytes++;
         const code=text.charCodeAt(i);
         if(code>=0xD800&&code<=0xDBFF&&i+1<text.length){
@@ -959,6 +1000,7 @@ function estimateMarkdownBytes(){
     }
     return Math.max(total,1);
 }
+
 function normalizeMarkdownChunk(text,state,final=false){
     if(!text)return "";
     const combined=state.tail+text;
@@ -994,6 +1036,11 @@ async function htmlToMarkdown(){
     for await(const chunk of markdownChunks())result+=chunk;
     return result;
 }
+
+/* =========================
+   EXPORT OVERLAY
+   ========================= */
+
 function createExportOverlay(){
     if(document.getElementById("markdownExportOverlay"))return;
     const style=document.createElement("style");
@@ -1030,8 +1077,7 @@ function createExportOverlay(){
 function showExportOverlay(totalBytes){
     createExportOverlay();
     exportCancelRequested=false;
-    const overlay=document.getElementById("markdownExportOverlay");
-    const percent=document.getElementById("markdownExportPercent"),bar=document.getElementById("markdownExportBar"),written=document.getElementById("markdownExportWritten"),total=document.getElementById("markdownExportTotal"),status=document.getElementById("markdownExportStatus"),cancel=document.getElementById("markdownExportCancel");
+    const overlay=document.getElementById("markdownExportOverlay"),percent=document.getElementById("markdownExportPercent"),bar=document.getElementById("markdownExportBar"),written=document.getElementById("markdownExportWritten"),total=document.getElementById("markdownExportTotal"),status=document.getElementById("markdownExportStatus"),cancel=document.getElementById("markdownExportCancel");
     status.textContent="Escribiendo archivo por partes...";
     percent.textContent="0%";
     bar.style.width="0%";
@@ -1115,6 +1161,11 @@ function unlockEditorAfterExport(){
     updateToolbarState();
     updateStatus();
 }
+
+/* =========================
+   LOAD OVERLAY
+   ========================= */
+
 function createLoadOverlay(){
     if(document.getElementById("markdownLoadOverlay"))return;
     const style=document.createElement("style");
@@ -1178,133 +1229,368 @@ function unlockEditorAfterLoad(){
 function nextFrame(){
     return new Promise(resolve=>requestAnimationFrame(()=>resolve()));
 }
+
+/* =========================
+   MARKDOWN IMPORT
+   ========================= */
+
 function escapeHTML(text){
     const div=document.createElement("div");
     div.textContent=text;
     return div.innerHTML;
 }
-function markdownInlineToHTML(text){
-    let result=escapeHTML(text);
-    result=result.replace(/\\([\\`\*\_#[\]{}()+\-.!>])/g,"$1");
-    result=result.replace(/\\`([^\\`]+)\\`/g,'<code class="inline-code">$1</code>');
-    result=result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-    result=result.replace(/\*\*([^\*]+)\*\*/g,"<strong>$1</strong>");
-    result=result.replace(/~~([^\~]+)~~/g,"<s>$1</s>");
-    result=result.replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g,"<em>$1</em>");
-    result=result.replace(/<u>([\s\S]*?)<\/u>/gi,"<u>$1</u>");
-    return result;
+
+function decodeHTML(text){
+    const area=document.createElement("textarea");
+    area.innerHTML=text;
+    return area.value;
 }
-function markdownToHTML(markdown){
-    const imageBlocks=[];
-    markdown=markdown.replace(/<p\s+align=['"]center['"]\s+id=['"]([^'"]+)['"]>\s*<img\s+id=['"]([^'"]+)['"]\s+alt=['"]([^'"]*)['"]\s+src=['"]([^'"]+)['"]\s*>\s*<\/p>/gi,(_,wrapperId,imageId,alt,src)=>{
-        const token=`___IMAGE_BLOCK_${imageBlocks.length}___`;
-        imageBlocks.push({wrapperId,imageId,alt,src});
+
+/* Mantiene los formatos inline sin convertirlos en texto plano. */
+function markdownInlineToHTML(text){
+    const underlineTokens=[];
+    text=String(text).replace(/<u>([\s\S]*?)<\/u>/gi,(_,content)=>{
+        const token=`\uE000${underlineTokens.length}\uE001`;
+        underlineTokens.push(content);
         return token;
     });
-    const lines=markdown.split(/\r?\n/),html=[];
-    let i=0;
-    while(i<lines.length){
-        const line=lines[i],imageToken=line.match(/^___IMAGE_BLOCK_(\d+)___$/);
-        if(imageToken){
-            const data=imageBlocks[Number(imageToken[1])];
-            html.push(`<p class="md-image" align="center" id="${escapeAttribute(data.wrapperId)}"><img id="${escapeAttribute(data.imageId)}" alt="${escapeAttribute(data.alt)}" src="${data.src}" style="width:80%"></p>`);
-            i++;
-            continue;
-        }
-        if(line.trim().startsWith("```")){
-            const codeLines=[];
-            i++;
-            while(i<lines.length&&!lines[i].trim().startsWith("```")){
-                codeLines.push(lines[i]);
-                i++;
-            }
-            if(i<lines.length)i++;
-            html.push(`<pre class="code-block"><code>${escapeHTML(codeLines.join("\n"))}</code></pre>`);
-            continue;
-        }
-        if(!line.trim()){
-            i++;
-            continue;
-        }
-        const heading=line.match(/^(#{1,6})\s+(.+)$/);
-        if(heading){
-            html.push(`<h${heading[1].length}>${markdownInlineToHTML(heading[2])}</h${heading[1].length}>`);
-            i++;
-            continue;
-        }
-        if(/^(\*{3,}|-{3,}|_{3,})$/.test(line.trim())){
-            html.push("<hr>");
-            i++;
-            continue;
-        }
-        if(line.trim().startsWith(">")){
-            const quoteLines=[];
-            while(i<lines.length&&lines[i].trim().startsWith(">")){
-                quoteLines.push(lines[i].replace(/^>\s?/,""));
-                i++;
-            }
-            html.push(`<blockquote>${quoteLines.map(markdownInlineToHTML).join("<br>")}</blockquote>`);
-            continue;
-        }
-        if(/^[-\*+]\s+/.test(line)){
-            const items=[];
-            while(i<lines.length&&/^[-\*+]\s+/.test(lines[i])){
-                items.push(`<li>${markdownInlineToHTML(lines[i].replace(/^[-\*+]\s+/,""))}</li>`);
-                i++;
-            }
-            html.push(`<ul>${items.join("")}</ul>`);
-            continue;
-        }
-        if(/^\d+\.\s+/.test(line)){
-            const items=[];
-            while(i<lines.length&&/^\d+\.\s+/.test(lines[i])){
-                items.push(`<li>${markdownInlineToHTML(lines[i].replace(/^\d+\.\s+/,""))}</li>`);
-                i++;
-            }
-            html.push(`<ol>${items.join("")}</ol>`);
-            continue;
-        }
-        const paragraphLines=[line];
-        i++;
-        while(i<lines.length&&lines[i].trim()&&!/^#{1,6}\s+/.test(lines[i])&&!/^```/.test(lines[i])&&!/^[-\*+]\s+/.test(lines[i])&&!/^\d+\.\s+/.test(lines[i])&&!/^>/.test(lines[i])&&!/^___IMAGE_BLOCK_\d+___$/.test(lines[i])){
-            paragraphLines.push(lines[i]);
-            i++;
-        }
-        html.push(`<p>${paragraphLines.map(markdownInlineToHTML).join("<br>")}</p>`);
-    }
-    return html.join("\n");
+
+    let result=escapeHTML(text);
+
+    result=result.replace(/\\([\\`*_#[\]{}()+\-.!>])/g,"$1");
+    result=result.replace(/`([^`\n]+)`/g,'<code class="inline-code">$1</code>');
+    result=result.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    result=result.replace(/\*\*([^\*]+)\*\*/g,"<strong>$1</strong>");
+    result=result.replace(/~~([^~]+)~~/g,"<s>$1</s>");
+    result=result.replace(/(?<!\*)\*([^\*\n]+)\*(?!\*)/g,"<em>$1</em>");
+
+    result=result.replace(/\uE000(\d+)\uE001/g,(_,index)=>{
+        return `<u>${markdownInlineToHTML(underlineTokens[Number(index)])}</u>`;
+    });
+
+    return result;
 }
+
+function appendInlineHTML(element,text){
+    if(!text)return;
+    element.insertAdjacentHTML("beforeend",markdownInlineToHTML(text));
+}
+
+/* ============================================================
+   IMAGEN PRIORITARIA
+   ============================================================ */
+
+function appendLoadedImage(raw){
+    const match=raw.match(
+        /<p\s+align=['"]center['"]\s+id=['"]([^'"]+)['"][\s\S]*?<img\s+id=['"]([^'"]+)['"]\s+alt=['"]([\s\S]*?)['"]\s+src=['"]([\s\S]*?)['"]\s*>\s*<\/p>/i
+    );
+
+    if(!match)return false;
+
+    const wrapper=document.createElement("p");
+    wrapper.className="md-image";
+    wrapper.id=match[1];
+
+    const image=document.createElement("img");
+    image.id=match[2];
+    image.alt=decodeHTML(match[3]);
+    image.src=match[4];
+    image.style.width="80%";
+
+    wrapper.setAttribute("align","center");
+    wrapper.appendChild(image);
+    editor.appendChild(wrapper);
+
+    return true;
+}
+
+/* ============================================================
+   CARGA STREAMING
+   ============================================================ */
+
+async function loadMarkdownStreaming(file){
+    editor.replaceChildren();
+    savedRange=null;
+
+    const reader=file.stream().getReader();
+    const decoder=new TextDecoder();
+    let lineParts=[];
+    let loadedBytes=0;
+    let linesSinceYield=0;
+    let lastProgress=0;
+
+    let paragraph=null;
+    let quote=null;
+    let list=null;
+    let code=null;
+    let imageParts=null;
+
+    function resetBlocks(){
+        paragraph=null;
+        quote=null;
+        list=null;
+    }
+
+    function startParagraph(text){
+        if(!paragraph){
+            resetBlocks();
+            paragraph=document.createElement("p");
+            editor.appendChild(paragraph);
+            appendInlineHTML(paragraph,text);
+        }else{
+            paragraph.appendChild(document.createElement("br"));
+            appendInlineHTML(paragraph,text);
+        }
+    }
+
+    function startQuote(text){
+        if(!quote){
+            resetBlocks();
+            quote=document.createElement("blockquote");
+            editor.appendChild(quote);
+            appendInlineHTML(quote,text);
+        }else{
+            quote.appendChild(document.createElement("br"));
+            appendInlineHTML(quote,text);
+        }
+    }
+
+    function startList(type,text){
+        if(!list||list.tagName.toLowerCase()!==type){
+            resetBlocks();
+            list=document.createElement(type);
+            editor.appendChild(list);
+        }
+        const li=document.createElement("li");
+        appendInlineHTML(li,text);
+        list.appendChild(li);
+    }
+
+    function processLine(rawLine){
+        let line=rawLine;
+
+        if(line.endsWith("\r"))line=line.slice(0,-1);
+
+        /* IMAGEN: siempre se procesa antes que cualquier otro bloque. */
+        if(imageParts){
+            imageParts.push(line);
+            if(/<\/p>\s*$/i.test(line)){
+                const raw=imageParts.join("\n");
+                appendLoadedImage(raw);
+                imageParts=null;
+            }
+            return;
+        }
+
+        const trimmed=line.trim();
+
+        if(/^<p\s+align=['"]center['"]\s+id=['"][^'"]+['"]/i.test(trimmed)){
+            resetBlocks();
+            imageParts=[trimmed];
+
+            if(/<\/p>\s*$/i.test(trimmed)){
+                appendLoadedImage(trimmed);
+                imageParts=null;
+            }
+
+            return;
+        }
+
+        /* CODE BLOCK */
+        if(code){
+            if(trimmed.startsWith("```")){
+                code=null;
+                return;
+            }
+
+            if(code.hasChildNodes())code.appendChild(document.createTextNode("\n"));
+            code.appendChild(document.createTextNode(line));
+            return;
+        }
+
+        if(trimmed.startsWith("```")){
+            resetBlocks();
+
+            const pre=document.createElement("pre");
+            const codeElement=document.createElement("code");
+
+            pre.className="code-block";
+            pre.appendChild(codeElement);
+            editor.appendChild(pre);
+
+            code=codeElement;
+            return;
+        }
+
+        /* LÍNEA VACÍA */
+        if(!trimmed){
+            resetBlocks();
+            return;
+        }
+
+        /* TÍTULOS */
+        const heading=trimmed.match(/^(#{1,6})\s+(.+)$/);
+        if(heading){
+            resetBlocks();
+
+            const element=document.createElement(`h${heading[1].length}`);
+            appendInlineHTML(element,heading[2]);
+            editor.appendChild(element);
+            return;
+        }
+
+        /* HORIZONTAL RULE */
+        if(/^(\*{3,}|-{3,}|_{3,})$/.test(trimmed)){
+            resetBlocks();
+            editor.appendChild(document.createElement("hr"));
+            return;
+        }
+
+        /* BLOCKQUOTE */
+        if(/^>\s?/.test(trimmed)){
+            const content=trimmed.replace(/^>\s?/,"");
+            startQuote(content);
+            return;
+        }
+
+        /* LISTA NO ORDENADA */
+        const unordered=trimmed.match(/^[-*+]\s+(.+)$/);
+        if(unordered){
+            startList("ul",unordered[1]);
+            return;
+        }
+
+        /* LISTA ORDENADA */
+        const ordered=trimmed.match(/^\d+\.\s+(.+)$/);
+        if(ordered){
+            startList("ol",ordered[1]);
+            return;
+        }
+
+        /* PÁRRAFO */
+        startParagraph(line);
+    }
+
+    async function consumeText(text){
+        let start=0;
+
+        while(true){
+            const newline=text.indexOf("\n",start);
+
+            if(newline===-1){
+                if(start<text.length)lineParts.push(text.slice(start));
+                break;
+            }
+
+            lineParts.push(text.slice(start,newline));
+            processLine(lineParts.join(""));
+            lineParts=[];
+
+            linesSinceYield++;
+
+            if(linesSinceYield>=150){
+                linesSinceYield=0;
+
+                const now=performance.now();
+                if(now-lastProgress>80){
+                    lastProgress=now;
+                    const percent=file.size?Math.min(100,loadedBytes/file.size*100):0;
+                    setLoadStatus(`Cargando documento... ${percent.toFixed(1)}%`);
+                }
+
+                await nextFrame();
+            }
+
+            start=newline+1;
+        }
+    }
+
+    try{
+        while(true){
+            const {value,done}=await reader.read();
+            if(done)break;
+
+            loadedBytes+=value.byteLength;
+
+            const decoded=decoder.decode(value,{stream:true});
+            if(decoded)await consumeText(decoded);
+
+            const now=performance.now();
+            if(now-lastProgress>120){
+                lastProgress=now;
+                const percent=file.size?Math.min(100,loadedBytes/file.size*100):0;
+                setLoadStatus(`Cargando documento... ${percent.toFixed(1)}%`);
+                await nextFrame();
+            }
+        }
+
+        const remaining=decoder.decode();
+        if(remaining)await consumeText(remaining);
+
+        if(lineParts.length){
+            processLine(lineParts.join(""));
+            lineParts=[];
+        }
+
+        if(imageParts){
+            const raw=imageParts.join("\n");
+            appendLoadedImage(raw);
+            imageParts=null;
+        }
+
+        setLoadStatus("Aplicando formato...");
+        await nextFrame();
+
+        normalizeEditor();
+
+        setLoadStatus("Finalizando documento...");
+        await nextFrame();
+
+    }finally{
+        try{reader.releaseLock();}catch(error){}
+    }
+}
+
+/* ============================================================
+   LOAD
+   ============================================================ */
+
 loadButton.addEventListener("click",()=>{
     if(exporting||loading)return;
     fileInput.click();
 });
+
 fileInput.addEventListener("change",async()=>{
     if(exporting||loading)return;
+
     const file=fileInput.files?.[0];
     if(!file)return;
+
     loading=true;
     lockEditorForLoad();
     showLoadOverlay();
+
     await nextFrame();
+
     try{
-        setLoadStatus(`Leyendo ${formatBytes(file.size)}...`);
+        setLoadStatus(`Preparando ${formatBytes(file.size)}...`);
         await nextFrame();
-        const markdown=await file.text();
-        setLoadStatus("Construyendo documento...");
-        await nextFrame();
-        editor.innerHTML=markdownToHTML(markdown);
-        setLoadStatus("Aplicando formato...");
-        await nextFrame();
-        normalizeEditor();
-        setLoadStatus("Finalizando...");
-        await nextFrame();
+
+        await loadMarkdownStreaming(file);
+
         editor.focus();
-        updateToolbarState();
-        updateStatus();
         savedRange=null;
+
+        setLoadStatus("Documento cargado");
         await nextFrame();
+
     }catch(error){
         console.error("Error cargando Markdown:",error);
+
+        /* Si algo falla, evitamos dejar un documento parcialmente construido. */
+        editor.replaceChildren();
+        savedRange=null;
+
     }finally{
         fileInput.value="";
         hideLoadOverlay();
@@ -1314,23 +1600,37 @@ fileInput.addEventListener("change",async()=>{
         updateStatus();
     }
 });
+
+/* ============================================================
+   EXPORT
+   ============================================================ */
+
 async function saveMarkdown(){
     if(exporting||loading)return;
+
     exporting=true;
     exportCancelRequested=false;
     lockEditorForExport();
+
     await nextFrame();
+
     let totalBytes=0;
+
     try{
         totalBytes=estimateMarkdownBytes();
         showExportOverlay(totalBytes);
         await nextFrame();
+
         if("showSaveFilePicker" in window){
             let handle=null;
+
             try{
                 handle=await window.showSaveFilePicker({
                     suggestedName:"Markdown.md",
-                    types:[{description:"Archivo Markdown",accept:{"text/markdown":[".md"]}}]
+                    types:[{
+                        description:"Archivo Markdown",
+                        accept:{"text/markdown":[".md"]}
+                    }]
                 });
             }catch(error){
                 if(error.name==="AbortError"){
@@ -1341,9 +1641,12 @@ async function saveMarkdown(){
                 }
                 throw error;
             }
+
             const writable=await handle.createWritable();
             exportWritable=writable;
+
             let writtenBytes=0;
+
             for await(const chunk of markdownChunks()){
                 if(exportCancelRequested){
                     try{await writable.abort();}catch(error){}
@@ -1355,11 +1658,15 @@ async function saveMarkdown(){
                     unlockEditorAfterExport();
                     return;
                 }
+
                 await writable.write(chunk);
+
                 writtenBytes+=utf8Length(chunk);
                 updateExportProgress(writtenBytes,totalBytes);
+
                 await new Promise(resolve=>setTimeout(resolve,0));
             }
+
             if(exportCancelRequested){
                 try{await writable.abort();}catch(error){}
                 exportWritable=null;
@@ -1370,18 +1677,25 @@ async function saveMarkdown(){
                 unlockEditorAfterExport();
                 return;
             }
+
             await writable.close();
             exportWritable=null;
+
             updateExportProgress(totalBytes,totalBytes);
             setExportFinished();
+
             await new Promise(resolve=>setTimeout(resolve,650));
+
             hideExportOverlay();
             exporting=false;
             unlockEditorAfterExport();
             return;
         }
+
         setExportStatus("Este navegador no permite escritura directa. Generando descarga...");
+
         const markdown=await htmlToMarkdown();
+
         if(exportCancelRequested){
             setExportCancelled();
             await new Promise(resolve=>setTimeout(resolve,500));
@@ -1390,28 +1704,39 @@ async function saveMarkdown(){
             unlockEditorAfterExport();
             return;
         }
+
         const blob=new Blob([markdown],{type:"text/markdown;charset=utf-8"}),url=URL.createObjectURL(blob),anchor=document.createElement("a");
+
         anchor.href=url;
         anchor.download="Markdown.md";
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
+
         setTimeout(()=>URL.revokeObjectURL(url),1000);
+
         updateExportProgress(blob.size,blob.size);
         setExportFinished();
+
         await new Promise(resolve=>setTimeout(resolve,650));
         hideExportOverlay();
+
     }catch(error){
         console.error("Error guardando Markdown:",error);
+
         if(exportWritable){
             try{await exportWritable.abort();}catch(abortError){}
         }
+
         exportWritable=null;
+
         if(error.name!=="AbortError"){
             setExportError();
             await new Promise(resolve=>setTimeout(resolve,1000));
         }
+
         hideExportOverlay();
+
     }finally{
         exporting=false;
         exportCancelRequested=false;
@@ -1419,24 +1744,29 @@ async function saveMarkdown(){
         unlockEditorAfterExport();
     }
 }
+
 saveButton.addEventListener("click",saveMarkdown);
+
 document.addEventListener("keydown",event=>{
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="s"){
         event.preventDefault();
         if(!exporting&&!loading)saveMarkdown();
         return;
     }
+
     if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
         event.preventDefault();
         if(!exporting&&!loading)openLinkModal();
     }
 });
+
 linkModal.addEventListener("click",event=>{
     if(event.target===linkModal)closeLinkModal();
 });
 imageModal.addEventListener("click",event=>{
     if(event.target===imageModal)closeImageModal();
 });
+
 function initialize(){
     createExportOverlay();
     createLoadOverlay();
@@ -1444,4 +1774,5 @@ function initialize(){
     updateToolbarState();
     updateStatus();
 }
+
 initialize();
